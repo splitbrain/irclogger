@@ -1,0 +1,73 @@
+body {
+  font: 85% "Lucida Grande", Verdana, Lucida, Helvetica, Arial, sans-serif;
+  background-color: #fff;
+  color: #000;
+}
+
+form {
+    display: inline;
+}
+
+ul#log {
+    list-style-type: none;
+    margin: 1em 0;
+    padding: 0;
+}
+
+ul#log li {
+    clear: left;
+    float: left;
+}
+
+ul#log li a {
+    text-decoration: none;
+    color: #000;
+    width: 7em;
+    display: block;
+    float: left;
+}
+
+ul#log li b {
+    width: 8em;
+    display: block;
+    float: left;
+    text-align: right;
+    overflow: hide;
+}
+
+ul#log li span {
+    display: block;
+    padding-left: 16.5em;
+}
+
+ul#log li span.server {
+    color: #666;
+}
+
+h1 input {
+    font-weight: bold;
+    font-size: 1em;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #fff;
+    width: 8em;
+}
+
+h1 input:hover,
+h1 input:focus {
+    border: 1px solid #ccc;
+}
+
+div.footer {
+    padding-top: 3em;
+    clear: both;
+}
+
+div.footer div {
+    border-top: 1px solid #ccc;
+}
+
+div.footer ul {
+    float: left;
+    list-style-type: none;
+}

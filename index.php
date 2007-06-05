@@ -76,7 +76,7 @@ if($date){
 echo '<ul id="log">';
 if($sql) while($row = mysql_fetch_array($res, MYSQL_ASSOC)){
     echo '<li>';
-    echo '<a id="msg'.$row['id'].'" href="index.php?d='.$row['d'].'#msg'.$row['id'].'">';
+    echo '<a id="msg'.$row['id'].'" href="index.php?d='.$row['d'].'#msg'.$row['id'].'" class="time">';
     echo '['.$row['t'].']';
     echo '</a>';
     if($row['type'] == 'public'){
@@ -84,7 +84,10 @@ if($sql) while($row = mysql_fetch_array($res, MYSQL_ASSOC)){
     }else{
         echo '<b>*</b><span class="server">';
     }
-    $msg = htmlspecialchars($row['msg']);
+    $msg = htmlspecialchars(  $row['msg']);
+    $msg = preg_replace_callback('/((https?|ftp):\/\/[\w-?&;#~=\.\/\@]+[\w\/])/ui',
+                                 'format_link',$msg);
+
     if(substr($msg,0,3) == '/me'){
         $msg = '<strong>'.htmlspecialchars($row['user']).substr($msg,3).'</strong>';
     }
@@ -117,3 +120,17 @@ echo '</ul>';
 
 </body>
 </html>
+<?php
+
+/**
+ * Callback to autolink a URL (with shortening)
+ */
+function format_link($match){
+    $url = $match[1];
+    $url = str_replace("\\\\'","'",$url);
+    $link = '<a href="'.$url.'" rel="nofollow">'.$url.'</a>';
+    return $link;
+}
+
+
+?>

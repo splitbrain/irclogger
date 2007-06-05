@@ -19,7 +19,7 @@ ul#log li {
     float: left;
 }
 
-ul#log li a {
+ul#log li a.time {
     text-decoration: none;
     color: #000;
     width: 7em;
@@ -28,16 +28,16 @@ ul#log li a {
 }
 
 ul#log li b {
-    width: 8em;
+    width: 12em;
     display: block;
     float: left;
     text-align: right;
-    overflow: hide;
+    overflow: hidden;
 }
 
 ul#log li span {
     display: block;
-    padding-left: 16.5em;
+    padding-left: 20.5em;
 }
 
 ul#log li span.server {

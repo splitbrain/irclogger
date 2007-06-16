@@ -29,12 +29,12 @@ if($_REQUEST['s']){
               FROM messages
              WHERE MATCH (msg)
            AGAINST ('".addslashes($_REQUEST['s'])."')
-          ORDER BY id DESC";
+          ORDER BY dt DESC, id DESC";
 }elseif($_REQUEST['u']){
     $sql = "SELECT dt
               FROM messages
              WHERE user = '".addslashes($_REQUEST['u'])."'
-          ORDER BY id DESC
+          ORDER BY dt DESC, id DESC
              LIMIT 1";
     $res = mysql_query($sql,$dbh);
     $row = mysql_fetch_array($res, MYSQL_ASSOC);
@@ -42,7 +42,7 @@ if($_REQUEST['s']){
         $sql = "SELECT id, DATE(dt) as d, TIME(dt) as t, user, type, msg
               FROM messages
              WHERE dt >= '".addslashes($row['dt'])."'
-          ORDER BY id";
+          ORDER BY dt, id";
     }else{
         echo 'Could not find any logs for user '.htmlspecialchars($_REQUEST['u']);
         $sql = '';
@@ -57,7 +57,7 @@ if($_REQUEST['s']){
     $sql = "SELECT id, DATE(dt) as d, TIME(dt) as t, user, type, msg
               FROM messages
              WHERE DATE(dt) = DATE('".addslashes($date)."')
-          ORDER BY id";
+          ORDER BY dt, id";
 }
 
 if($sql) $res = mysql_query($sql,$dbh);
@@ -85,7 +85,7 @@ if($sql) while($row = mysql_fetch_array($res, MYSQL_ASSOC)){
         echo '<b>*</b><span class="server">';
     }
     $msg = htmlspecialchars(  $row['msg']);
-    $msg = preg_replace_callback('/((https?|ftp):\/\/[\w-?&;#~=\.\/\@]+[\w\/])/ui',
+    $msg = preg_replace_callback('/((https?|ftp):\/\/[\w-?&;#~=\.\/\@%:]+[\w\/])/ui',
                                  'format_link',$msg);
 
     if(substr($msg,0,3) == '/me'){
@@ -97,6 +97,19 @@ if($sql) while($row = mysql_fetch_array($res, MYSQL_ASSOC)){
 
 }
 echo '</ul>';
+
+$sql = "SELECT DISTINCT DATE(dt) as d, DAY(dt) as day
+          FROM messages
+         WHERE dt > DATE_SUB(NOW(), INTERVAL 30 DAY)
+      ORDER BY dt";
+$res = mysql_query($sql,$dbh);
+
+echo '<div class="archive">Last 30 days: ';
+while($row = mysql_fetch_array($res, MYSQL_ASSOC)){
+    echo '<a href="index.php?d='.$row['d'].'">'.$row['day'].'</a> ';
+}
+echo '</div>';
+
 ?>
 
 <div class="footer"><div>

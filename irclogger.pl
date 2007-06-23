@@ -1,19 +1,6 @@
 #!/usr/bin/perl
 
-
-# --- setup for the logger ---
-%conf = (
-    db_host  => 'localhost',
-    db_user  => 'irclogger',
-    db_pass  => 'irclogger',
-    db_name  => 'irclog',
-    irc_host => 'irc.freenode.net',
-    irc_port => 6666,
-    irc_chan => '#ircloggertest',
-    irc_nick => 'ircloggertest',
-    irc_name => 'I log everything said on this channel',
-    hello    => "I'm now logging this channel"
-);
+$configfile = 'irclogger.config.php';
 
 # --- no changes needed below ---
 $|=1;
@@ -22,6 +9,27 @@ use Net::IRC;
 use DBI;
 use Data::Dumper;
 $connected = 0;
+
+sub loadconfig($){
+    my $file = shift();
+    my %conf;
+    open(FILE,$file) || die "failed to open config $file";
+    my @lines = <FILE>;
+    close FILE;
+    return %conf if (!scalar(@lines));
+
+    foreach my $line (@lines) {
+        #ignore comments
+        $line =~ s/^#.*$//;
+        $line =~ s/^\s+//;
+        $line =~ s/\s+$//;
+        next if($line eq '');
+        my @data = split(/\s*=\s*/,$line,2);
+        $conf{$data[0]} = $data[1];
+    }
+    return %conf;
+}
+
 
 sub on_connect {
     my $self = shift;
@@ -82,6 +90,8 @@ sub on_msg {
     $dbh->do("INSERT INTO messages (user,type,msg) VALUES (?,?,?)",undef,
              $event->{nick},$event->{type},$msg);
 }
+
+%conf = loadconfig($configfile);
 
 $dbh = DBI->connect("DBI:mysql:database=$conf{db_name};host=$conf{db_host}",
                       $conf{db_user}, $conf{db_pass}) || die "failed to open DB connection";

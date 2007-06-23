@@ -1,11 +1,8 @@
 <?php
 
-$conf = array(
-    'db_host'  => 'localhost',
-    'db_user'  => 'irclogger',
-    'db_pass'  => 'irclogger',
-    'db_name'  => 'irclog',
-);
+require("func.php");
+$conf = loadconfig('irclogger.config.php');
+
 
 header('Content-Type: text/html; charset=utf-8');
 ?>
@@ -19,10 +16,7 @@ header('Content-Type: text/html; charset=utf-8');
 </head>
 <body>
 <?php
-$dbh = mysql_connect($conf['db_host'],$conf['db_user'],$conf['db_pass']) or
-        die("failed to connect to database");
-mysql_select_db($conf['db_name'],$dbh) or die('Could not select database');
-mysql_query("SET NAMES 'utf8'");
+$dbh = getdbhandle($conf);
 
 if($_REQUEST['s']){
     $sql = "SELECT id, DATE(dt) as d, TIME(dt) as t, user, type, msg

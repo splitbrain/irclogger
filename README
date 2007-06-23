@@ -1,7 +1,8 @@
 This is a simple IRC logger with a webinterface.
 
 To install, create a new MySQL table using the provided 'mysql.sql'
-script and edit the top of 'irclogger.pl' and 'index.php' to match
-your database settings. Then run the irclogger.pl script.
+script and edit the 'irclogger.config.php' to match your database
+and IRC channel settings. Then run the 'irclogger.pl' script to
+start logging.
 
 The logger needs the Net::IRC perl module.

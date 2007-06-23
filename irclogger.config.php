@@ -8,6 +8,9 @@ db_user = irclogger
 db_pass = irclogger
 db_name = irclog
 
+# where is the frontend installed to?
+baseurl = http://www.example.com/irclogger/
+
 # IRC data used by logger only
 irc_host = irc.freenode.net
 irc_port = 6666

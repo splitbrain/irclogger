@@ -1,6 +1,6 @@
 <?php
 
-loadconfig($file){
+function loadconfig($file){
     $conf = array();
     $lines = @file( $file );
     if ( !$lines ) return $conf;
@@ -11,13 +11,12 @@ loadconfig($file){
         $line = trim($line);
         if(empty($line)) continue;
         $line = preg_split('/\s*=\s*/',$line,2);
-            $conf[$line[0]] = $line[1];
-        }
+        $conf[$line[0]] = $line[1];
     }
     return $conf;
 }
 
-getdbhandle($conf){
+function getdbhandle($conf){
     $dbh = mysql_connect($conf['db_host'],$conf['db_user'],$conf['db_pass']) or
             die("failed to connect to database");
     mysql_select_db($conf['db_name'],$dbh) or die('Could not select database');

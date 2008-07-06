@@ -2,6 +2,8 @@
 
 $configfile = 'irclogger.config.php';
 
+require "irclogger.special.pl";
+
 # --- no changes needed below ---
 $|=1;
 
@@ -89,6 +91,7 @@ sub on_msg {
 
     $dbh->do("INSERT INTO messages (user,type,msg) VALUES (?,?,?)",undef,
              $event->{nick},$event->{type},$msg);
+    special($self,$msg,$event->{nick});
 }
 
 %conf = loadconfig($configfile);
@@ -102,7 +105,8 @@ $irc = new Net::IRC;
 $conn = $irc->newconn(Nick    => $conf{irc_nick},
                       Server  => $conf{irc_host},
                       Port    => $conf{irc_port},
-                      Ircname => $conf{irc_name});
+                      Ircname => $conf{irc_name},
+                      Password=> $conf{irc_pass});
 $conn->add_global_handler('376',\&on_connect);
 $conn->add_global_handler('422',\&on_connect);
 $conn->add_global_handler('error',\&on_error);

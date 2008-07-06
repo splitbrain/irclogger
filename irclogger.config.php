@@ -16,5 +16,6 @@ irc_host = irc.freenode.net
 irc_port = 6666
 irc_chan = #ircloggertest
 irc_nick = ircloggertest
+irc_pass = examplepass
 irc_name = I log everything said on this channel
 hello    = I'm now logging this channel

@@ -47,6 +47,8 @@ sub special($$$) {
             $irc->privmsg($conf{'irc_chan'}, "$nick, enjoy your cookie. I will take care of the crumbs.");
         }elsif($msg =~ m/\bcake\b/i){
             $irc->privmsg($conf{'irc_chan'}, "$nick, the cake is a lie!");
+        }elsif($msg =~ m/\b(hi|hello|good morning|good evening|welcome|wb)\b/i){
+            $irc->privmsg($conf{'irc_chan'}, "Hello $nick, I'm just a humble bot but I'll try my best to serve you.");
         }
     }
 }

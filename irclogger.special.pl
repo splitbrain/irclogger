@@ -31,7 +31,7 @@ sub special($$$) {
             }
         }elsif($msg =~ m/\bbeer\b/i){
             if($nick eq 'chimeric'){
-                $irc->privmsg($conf{'irc_chan'}, "$nick, have a cool, refreshing Augistiner beer. Prost!");
+                $irc->privmsg($conf{'irc_chan'}, "$nick, have a cool, refreshing Augustiner beer. Prost!");
             }else{
                 $irc->privmsg($conf{'irc_chan'}, "$nick, have a cool, refreshing beer, you've earned it.");
             }
@@ -43,11 +43,15 @@ sub special($$$) {
             }else{
                 $irc->privmsg($conf{'irc_chan'}, "$nick, here is your glass of fine $1.");
             }
-        }elsif($msg =~ m/\bcookie(s)\b/i){
+        }elsif($msg =~ m/\bcookies?\b/i){
             $irc->privmsg($conf{'irc_chan'}, "$nick, enjoy your cookie. I will take care of the crumbs.");
         }elsif($msg =~ m/\bcake\b/i){
             $irc->privmsg($conf{'irc_chan'}, "$nick, the cake is a lie!");
-        }elsif($msg =~ m/\b(hi|hello|good morning|good evening|welcome|wb)\b/i){
+        }elsif($msg =~ m/\b(poke|tickle)s?\b/i){
+            $irc->privmsg($conf{'irc_chan'}, "*giggle* $nick, please stop this. :-)");
+        }elsif($msg =~ m/\bzimbot\b/i){
+            $irc->privmsg($conf{'irc_chan'}, "*blush* zimbot is kinda cute.");
+        }elsif($msg =~ m/\b(hi|hello|heyas|hey|good morning|good evening|welcome|wb)\b/i){
             $irc->privmsg($conf{'irc_chan'}, "Hello $nick, I'm just a humble bot but I'll try my best to serve you.");
         }
     }

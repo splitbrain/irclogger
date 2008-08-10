@@ -10,8 +10,10 @@ sub special($$$) {
 
     if($msg =~ m/(^| )FS#(\d\d+)( |$)/){
         $irc->privmsg($conf{'irc_chan'}, "See bugreport $2 at http://bugs.splitbrain.org/index.php?do=details&task_id=$2");
-    }elsif($msg =~ m/ (wiki:[:\w]+)/){
-        $irc->privmsg($conf{'irc_chan'}, 'http://wiki.splitbrain.org/'.$1);
+    }elsif($msg =~ m/\b(\w+:[:\w]+)\b/){
+        $irc->privmsg($conf{'irc_chan'}, 'http://www.dokuwiki.org/'.$1);
+    }elsif($msg =~ m/\b\[\[([:\w]+)\]\]\b/){
+        $irc->privmsg($conf{'irc_chan'}, 'http://www.dokuwiki.org/'.$1);
     }elsif(length($msg) < 50 and  $msg =~ m/((have|got|ask).*?(question))|((can|may) I ask )/i){
         $irc->privmsg($conf{'irc_chan'}, $nick.', just ask your question and stay in the channel for a while.');
     }elsif($msg =~ m/$mynick/){

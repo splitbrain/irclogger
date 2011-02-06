@@ -8,12 +8,21 @@ sub special($$$) {
     my $nick = shift;
     $mynick = $conf{'irc_nick'};
 
-    if($msg =~ m/(^| )FS#(\d\d+)( |$)/){
-        $irc->privmsg($conf{'irc_chan'}, "See bugreport $2 at http://bugs.splitbrain.org/index.php?do=details&task_id=$2");
-    }elsif($msg =~ m/\b(\w+:[:\w]+)\b/){
-        $irc->privmsg($conf{'irc_chan'}, 'http://www.dokuwiki.org/'.$1);
-    }elsif($msg =~ m/\b\[\[([:\w]+)\]\]\b/){
-        $irc->privmsg($conf{'irc_chan'}, 'http://www.dokuwiki.org/'.$1);
+    if($msg =~ m/\bFS#(\d\d+)\b/){
+        $irc->privmsg($conf{'irc_chan'}, "See bugreport $1 at http://bugs.dokuwiki.org/index.php?do=details&task_id=$1");
+    }elsif($msg =~ m/(^|\s)(\w*:\w+(:\w+)*)(\s|$)/){
+        my $id = $2;
+    $id =~ s/^://;
+    $id = lc($id);
+    $p  = $id;
+    $p  =~ s/:/\//g;
+    if( -e "/var/www/wiki/htdocs/data/pages/$p.txt"){
+            $irc->privmsg($conf{'irc_chan'}, 'http://www.dokuwiki.org/'.$id);
+    }
+#    }elsif($msg =~ m/(\[\[)([:\w]+)(\]\])/){
+#        $irc->privmsg($conf{'irc_chan'}, 'http://www.dokuwiki.org/'.$2);
+    }elsif($msg =~ m/\bUGT\b/){
+        $irc->privmsg($conf{'irc_chan'}, 'UGT - Universal Greeting Time http://www.total-knowledge.com/~ilya/mips/ugt.html'.$1);
     }elsif(length($msg) < 50 and  $msg =~ m/((have|got|ask).*?(question))|((can|may) I ask )/i){
         $irc->privmsg($conf{'irc_chan'}, $nick.', just ask your question and stay in the channel for a while.');
     }elsif($msg =~ m/\bgame\b/i){

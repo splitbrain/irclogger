@@ -42,7 +42,7 @@ sub on_connect {
     $self->join($conf{'irc_chan'});
     print " done\n";
 
-    $self->privmsg($conf{'irc_chan'}, sprintf($conf{'hello'}));
+#    $self->privmsg($conf{'irc_chan'}, sprintf($conf{'hello'}));
     $connected = 1;
 }
 
@@ -50,7 +50,8 @@ sub on_error {
     my $self  = shift;
     my $event = shift;
 
-    print $event->{'args'};
+    print "ERROR: ".$event->{'args'};
+    exit;
 }
 
 sub on_msg {
@@ -98,7 +99,7 @@ sub on_msg {
 
 $dbh = DBI->connect("DBI:mysql:database=$conf{db_name};host=$conf{db_host}",
                       $conf{db_user}, $conf{db_pass}) || die "failed to open DB connection";
-
+$dbh->{mysql_auto_reconnect} = 1;
 
 $irc = new Net::IRC;
 
@@ -110,6 +111,7 @@ $conn = $irc->newconn(Nick    => $conf{irc_nick},
 $conn->add_global_handler('376',\&on_connect);
 $conn->add_global_handler('422',\&on_connect);
 $conn->add_global_handler('error',\&on_error);
+$conn->add_global_handler('disconnect',\&on_error);
 
 $conn->add_handler('msg', \&on_msg);
 $conn->add_handler('public', \&on_msg);

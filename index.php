@@ -23,7 +23,8 @@ if($_REQUEST['s']){
               FROM messages
              WHERE MATCH (msg)
            AGAINST ('".addslashes($_REQUEST['s'])."')
-          ORDER BY dt DESC, id DESC";
+          ORDER BY dt DESC, id DESC
+             LIMIT 1000";
 }elseif($_REQUEST['u']){
     $sql = "SELECT dt
               FROM messages
@@ -36,7 +37,8 @@ if($_REQUEST['s']){
         $sql = "SELECT id, DATE(dt) as d, TIME(dt) as t, user, type, msg
               FROM messages
              WHERE dt >= '".addslashes($row['dt'])."'
-          ORDER BY dt, id";
+          ORDER BY dt, id
+	     LIMIT 1000";
     }else{
         echo 'Could not find any logs for user '.htmlspecialchars($_REQUEST['u']);
         $sql = '';

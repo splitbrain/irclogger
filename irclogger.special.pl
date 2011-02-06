@@ -16,6 +16,8 @@ sub special($$$) {
         $irc->privmsg($conf{'irc_chan'}, 'http://www.dokuwiki.org/'.$1);
     }elsif(length($msg) < 50 and  $msg =~ m/((have|got|ask).*?(question))|((can|may) I ask )/i){
         $irc->privmsg($conf{'irc_chan'}, $nick.', just ask your question and stay in the channel for a while.');
+    }elsif($msg =~ m/\bgame\b/i){
+        $irc->privmsg($conf{'irc_chan'}, '$nick, you just lost the game!');
     }elsif($msg =~ m/$mynick/){
         if($msg =~ m/\b(thanks?|thx)\b/i){
             $irc->privmsg($conf{'irc_chan'}, "$nick, I'm just a humble bot, don't thank me.");
@@ -34,6 +36,8 @@ sub special($$$) {
         }elsif($msg =~ m/\bbeer\b/i){
             if($nick eq 'chimeric'){
                 $irc->privmsg($conf{'irc_chan'}, "$nick, have a cool, refreshing Augustiner beer. Prost!");
+            }elsif($nick eq 'selfthinker'){
+                $irc->privmsg($conf{'irc_chan'}, "$nick, have a cool, refreshing ginger beer. Cheers, mate!");
             }else{
                 $irc->privmsg($conf{'irc_chan'}, "$nick, have a cool, refreshing beer, you've earned it.");
             }

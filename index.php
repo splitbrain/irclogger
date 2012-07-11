@@ -6,13 +6,13 @@ $conf = loadconfig('irclogger.config.php');
 
 header('Content-Type: text/html; charset=utf-8');
 ?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
- "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
 <head>
-    <title>IRC channel log</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <title>IRC log of <?php echo $conf['irc_chan'] ?> @ <?php echo $conf['irc_host']?></title>
     <link rel="stylesheet" media="all" type="text/css" href="style.css" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
 </head>
 <body>
 <?php
@@ -58,74 +58,101 @@ if($_REQUEST['s']){
 
 if($sql) $res = mysql_query($sql,$dbh);
 
+echo '<h1>IRC log of '.$conf['irc_chan'].' @ '.$conf['irc_host'].'</h1>';
 if($date){
-    echo '<form action="index.php">';
-    echo '<h1>Log for <input type="text" name="d" value="'.htmlspecialchars($date).'" /></h1>';
-    echo '</form>';
+    echo '<h2>For <em title="'.htmlspecialchars($date).'">'.date('l, j F Y', strtotime(htmlspecialchars($date))).'</em></h2>';
 }elseif($sql && $_REQUEST['u']){
-    echo '<h1>Log since last login of '.htmlspecialchars($_REQUEST['u']).'</h1>';
+    echo '<h2>Since last login of <em>'.htmlspecialchars($_REQUEST['u']).'</em></h2>';
 }elseif($sql && $_REQUEST['s']){
-    echo '<h1>Matching lines for '.htmlspecialchars($_REQUEST['s']).'</h1>';
+    echo '<h2>Matching lines for <em>'.htmlspecialchars($_REQUEST['s']).'</em></h2>';
     echo '<p>Click the timestamp to see the line in context.</p>';
 }
+echo '<a href="#nav" class="skip">skip to navigation</a>';
 
-echo '<ul id="log">';
+// content *******************************************
+echo '<ol id="log">';
 if($sql) while($row = mysql_fetch_array($res, MYSQL_ASSOC)){
-    echo '<li>';
-    echo '<a id="msg'.$row['id'].'" href="index.php?d='.$row['d'].'#msg'.$row['id'].'" class="time">';
-    echo '['.$row['t'].']';
+    echo '<li id="msg'.$row['id'].'" class="'.$row['type'].'">';
+    echo '<a href="index.php?d='.$row['d'].'#msg'.$row['id'].'" class="time" title="'.$row['d'].'">';
+    // give screenreaders a hint early enough which line includes a real message
+    if($row['type'] == 'public') echo '<span class="a11y">message at </span>';
+    echo '<time datetime="'.$row['d'].'T'.$row['t'].'">'.$row['t'].'</time>';
     echo '</a>';
+    echo '<dl>';
     if($row['type'] == 'public'){
-        echo '<b style="color:#'.substr(md5($row['user']),0,6).'">'.htmlspecialchars($row['user']).'</b><span class="user">';
+        echo '<dt style="color:#'.substr(md5($row['user']),0,6).'" class="user">'.htmlspecialchars($row['user']).'</dt>';
     }else{
-        echo '<b>*</b><span class="server">';
+        echo '<dt class="server">'.$row['type'].'</dt>';
     }
     $msg = htmlspecialchars(  $row['msg']);
     $msg = preg_replace_callback('/((https?|ftp):\/\/[\w-?&;#~=\.\/\@%:]+[\w\/])/ui',
                                  'format_link',$msg);
 
+    echo '<dd>';
     if(substr($msg,0,3) == '/me'){
         $msg = '<strong>'.htmlspecialchars($row['user']).substr($msg,3).'</strong>';
     }
     echo $msg;
-    echo '</span>';
+    echo '</dd>';
+    echo '</dl>';
     echo '</li>';
 
 }
-echo '</ul>';
+echo '</ol>';
 
+// nav *******************************************
 $sql = "SELECT DISTINCT DATE(dt) as d, DAY(dt) as day
           FROM messages
          WHERE dt > DATE_SUB(NOW(), INTERVAL 30 DAY)
       ORDER BY dt";
 $res = mysql_query($sql,$dbh);
 
-echo '<div class="archive">Last 30 days: ';
+echo '<div id="nav">';
+echo '<h2 class="a11y">Navigation</h2>';
+echo '<h3>Last 30 days</h3>';
+echo '<ul class="archive">';
 while($row = mysql_fetch_array($res, MYSQL_ASSOC)){
-    echo '<a href="index.php?d='.$row['d'].'">'.$row['day'].'</a> ';
+    echo '<li><a href="index.php?d='.$row['d'].'" title="'.$row['d'].'">'.$row['day'].'</a></li>';
 }
-echo '</div>';
-
 ?>
 
-<div class="footer"><div>
-<ul>
-    <li><a href="index.php?d=<?php echo date('Y-m-d')?>">Today's log</a></li>
-    <li><a href="index.php?d=<?php echo date('Y-m-d',time()-(60*60*24))?>">Yesterday's log</a></li>
+    <li class="today"><a href="index.php?d=<?php echo date('Y-m-d')?>" title="<?php echo date('Y-m-d')?>">Today's log</a></li>
+    <li class="yesterday"><a href="index.php?d=<?php echo date('Y-m-d',time()-(60*60*24))?>" title="<?php echo date('Y-m-d',time()-(60*60*24))?>">Yesterday's log</a></li>
 </ul>
-<ul>
-    <li>What happened since your last login?<br />
-        <form action="index.php"><input name="u" /></form>
-        <small>(Give your nick name and hit enter)</small></li>
-    <li>Search:<br />
-        <form action="index.php"><input name="s" /></form>
-        <small>(Give search terms and hit enter)</small></li>
+
+<h3>Filters</h3>
+<p class="hint">Enter one of the filters and hit return.</p>
+<ul class="filters">
+    <li>
+        <form action="index.php">
+            <label for="d">Date</label>
+            <input type="date" name="d" id="d" value="<?php echo htmlspecialchars($date) ?>" />
+            <small>Format: <abbr title="four digit year, dash, two digit month, dash, two digit day">yyyy-mm-dd</abbr></small>
+        </form>
+    </li>
+    <li>
+        <form action="index.php">
+            <label for="u">Nick name</label>
+            <input type="text" name="u" id="u" value="" />
+            <small>What happened since your last login?</small>
+        </form>
+    </li>
+    <li>
+        <form action="index.php">
+            <label for="s">Search</label>
+            <input type="search" name="s" id="s" value="" />
+            <small>Search for one or more words</small>
+        </form>
+    </li>
 </ul>
-<ul>
-    <li style="width: 25em;">Powered by a homemade, experimental IRC logger written in Perl, PHP and MySQL.<br />
-    A <a href="http://www.splitbrain.org">splitbrain.org</a> service.</li>
-</ul>
-</div></div>
+
+</div>
+
+
+<footer>
+    <p>Powered by a homemade, experimental IRC logger written in Perl, PHP and MySQL.<br />
+    A <a href="http://www.splitbrain.org">splitbrain.org</a> service.</p>
+</footer>
 
 </body>
 </html>

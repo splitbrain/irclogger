@@ -219,7 +219,7 @@ ul.filters small {
 
 #log {
     margin: 0 -2em 1.4em;
-    background-color: #eee;
+    background-color: #fff;
     border: solid #ccc;
     border-width: 1px 0;
     padding: 1em 2em;
@@ -227,6 +227,8 @@ ul.filters small {
 
 #log li {
     opacity: .5;
+    clear: left;
+    padding-left: 10em;
 }
 #log li.public {
     opacity: 1;
@@ -242,21 +244,25 @@ ul.filters small {
 
 #log a.time {
     float: left;
-    min-width: 4.5em;
+    margin-left: -10em;
 }
 
 #log dl {
-    display: inline;
+    margin-bottom: 0;
+    display: block;
 }
 #log dt {
-    display: inline;
     font-weight: normal;
-}
-#log .public dt {
-    font-weight: bold;
+    margin-left: -5em;
+    float: left;
+    width: 5em;
+    overflow: hidden;
 }
 #log dd {
-    margin: -.2em 0 .2em 4.5em;
+}
+
+#log .public dt {
+    font-weight: bold;
 }
 
 
@@ -275,7 +281,6 @@ a.skip {
 #log {
     margin-left: -.5em;
     margin-right: -.5em;
-    background-color: #eee;
     border: solid #ccc;
     border-width: 1px 0;
     padding-left: .5em;

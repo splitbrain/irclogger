@@ -11,7 +11,7 @@ header('Content-Type: text/html; charset=utf-8');
 <head>
     <meta charset="utf-8" />
     <title>IRC log of <?php echo $conf['irc_chan'] ?> @ <?php echo $conf['irc_host']?></title>
-    <link rel="stylesheet" media="all" type="text/css" href="style.css" />
+    <link rel="stylesheet" media="all" type="text/css" href="style.css?v=2" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
 </head>
 <body>

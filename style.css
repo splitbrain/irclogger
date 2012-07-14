@@ -53,13 +53,13 @@ h3 {
 
 p,
 ul,
-ol,
-dl {
+ol {
     margin: 0 0 1.4em 0; /* bottom margin = line-height */
     padding: 0;
 }
 
-div {
+div,
+dl {
     margin: 0;
     padding: 0;
 }
@@ -219,7 +219,6 @@ ul.filters small {
 
 #log {
     margin: 0 -2em 1.4em;
-    background-color: #fff;
     border: solid #ccc;
     border-width: 1px 0;
     padding: 1em 2em;
@@ -227,8 +226,6 @@ ul.filters small {
 
 #log li {
     opacity: .5;
-    clear: left;
-    padding-left: 10em;
 }
 #log li.public {
     opacity: 1;
@@ -242,23 +239,23 @@ ul.filters small {
 
 /*____________ for screen and print ____________*/
 
+#log li {
+    clear: left;
+    padding-left: 10em;
+}
+
 #log a.time {
     float: left;
     margin-left: -10em;
 }
 
-#log dl {
-    margin-bottom: 0;
-    display: block;
-}
 #log dt {
     font-weight: normal;
     margin-left: -5em;
     float: left;
     width: 5em;
     overflow: hidden;
-}
-#log dd {
+    text-overflow: ellipsis;
 }
 
 #log .public dt {
@@ -286,6 +283,22 @@ a.skip {
     padding-left: .5em;
     padding-right: .5em;
 }
+
+#log li {
+    padding-left: 0;
+}
+#log a.time {
+    min-width: 4.5em;
+    margin-left: 0;
+}
+#log dt {
+    margin-left: 0;
+    float: none;
+}
+#log dd {
+    margin: -.2em 0 .2em 4.5em;
+}
+
 
 footer {
     margin-left: -.5em;
@@ -334,7 +347,6 @@ footer {
 #log li {
     display: none;
     margin-left: 0;
-    padding-left: 0;
 }
 #log li.public {
     display: block;

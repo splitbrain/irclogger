@@ -19,4 +19,5 @@ irc_nick = ircloggertest
 irc_pass = examplepass
 irc_name = I log everything said on this channel
 hello    = I'm now logging this channel
-irc_disable_reconnect = 0
+# reconnect delay. if 0 no reconnect is attempted
+irc_reconnect = 0

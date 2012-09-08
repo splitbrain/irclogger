@@ -61,8 +61,9 @@ sub on_disconnect {
     $connected = 0;
 
     # try to reconnect if configured to do so
-    unless ($conf{'irc_disable_reconnect'}) {
-        print "Disconnected from ", $event->from(), " (", ($event->args())[0], "). Attempting to reconnect...\n";
+    if ($conf{'irc_reconnect'}) {
+        print "Disconnected from ", $event->from(), " (", ($event->args())[0], "). Attempting to reconnect in ", $conf{'irc_reconnect'}, " seconds...\n";
+		sleep($conf{'irc_reconnect'});
         $self->connect();
         return;
     }

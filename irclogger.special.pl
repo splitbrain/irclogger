@@ -8,8 +8,8 @@ sub special($$$) {
     my $nick = shift;
     $mynick = $conf{'irc_nick'};
 
-    if($msg =~ m/\bFS#(\d\d+)\b/){
-        $irc->privmsg($conf{'irc_chan'}, "See bugreport $1 at http://bugs.dokuwiki.org/index.php?do=details&task_id=$1");
+    if (my(@tickets) = $msg =~ m/\bFS#(\d\d+)\b/g) {
+        $irc->privmsg($conf{'irc_chan'}, "See bugreport $_ at http://bugs.dokuwiki.org/index.php?do=details&task_id=$_") for @tickets;
     }elsif($msg =~ m/(^|\s)(\w*:\w+(:\w+)*)(\s|$)/){
         my $id = $2;
     $id =~ s/^://;

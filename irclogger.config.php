@@ -19,3 +19,4 @@ irc_nick = ircloggertest
 irc_pass = examplepass
 irc_name = I log everything said on this channel
 hello    = I'm now logging this channel
+irc_disable_reconnect = 0

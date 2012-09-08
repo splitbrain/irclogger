@@ -54,6 +54,24 @@ sub on_error {
     exit;
 }
 
+# disconnect handler
+sub on_disconnect {
+    my ($self, $event) = @_;
+
+    $connected = 0;
+
+    # try to reconnect if configured to do so
+    if ($conf{'irc_reconnect'}) {
+        print "Disconnected from ", $event->from(), " (", ($event->args())[0], "). Attempting to reconnect in ", $conf{'irc_reconnect'}, " seconds...\n";
+		sleep($conf{'irc_reconnect'});
+        $self->connect();
+        return;
+    }
+
+    # otherwise just exit
+    exit;
+}
+
 sub on_msg {
     my $self  = shift;
     my $event = shift;
@@ -111,7 +129,7 @@ $conn = $irc->newconn(Nick    => $conf{irc_nick},
 $conn->add_global_handler('376',\&on_connect);
 $conn->add_global_handler('422',\&on_connect);
 $conn->add_global_handler('error',\&on_error);
-$conn->add_global_handler('disconnect',\&on_error);
+$conn->add_global_handler('disconnect',\&on_disconnect);
 
 $conn->add_handler('msg', \&on_msg);
 $conn->add_handler('public', \&on_msg);

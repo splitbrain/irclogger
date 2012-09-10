@@ -29,7 +29,7 @@ sub special($$$) {
     }elsif(length($msg) < 50 and  $msg =~ m/((have|got|ask).*?(question))|((can|may) I ask )/i){
         $irc->privmsg($conf{'irc_chan'}, $nick.', just ask your question and stay in the channel for a while.');
     }elsif($msg =~ m/\bgame\b/i){
-        $irc->privmsg($conf{'irc_chan'}, '$nick, you just lost the game!');
+        $irc->privmsg($conf{'irc_chan'}, "$nick, you just lost the game!");
     }elsif($msg =~ m/$mynick/){
         if($msg =~ m/\b(thanks?|thx)\b/i){
             $irc->privmsg($conf{'irc_chan'}, "$nick, I'm just a humble bot, don't thank me.");

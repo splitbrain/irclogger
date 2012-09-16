@@ -10,7 +10,8 @@ sub special($$$) {
 
     if (my(@tickets) = $msg =~ m/\bFS#(\d\d+)\b/g) {
         $irc->privmsg($conf{'irc_chan'}, "See bugreport $_ at http://bugs.dokuwiki.org/index.php?do=details&task_id=$_") for @tickets;
-
+    } elsif (my(@tickets) = $msg =~ m/\bPR#(\d\d+)\b/g) {
+        $irc->privmsg($conf{'irc_chan'}, "See pull request $_ at https://github.com/splitbrain/dokuwiki/pull/$_") for @tickets;
     } elsif (my(@pages) = $msg =~ m/(?:^|\s)(:?\w*:\w+(?::\w+)*)(?:\s|$)/g) {
         my @out;
         for my $id (@pages) {

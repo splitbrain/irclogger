@@ -1,6 +1,8 @@
 #!/usr/bin/perl
+use strict;
+use warnings;
 
-$configfile = 'irclogger.config.php';
+my $configfile = 'irclogger.config.php';
 
 require "irclogger.special.pl";
 
@@ -10,7 +12,8 @@ $|=1;
 use Net::IRC;
 use DBI;
 use Data::Dumper;
-$connected = 0;
+my $connected = 0;
+my (%conf, $dbh, $irc, $conn);
 
 sub loadconfig($){
     my $file = shift();

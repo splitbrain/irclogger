@@ -113,7 +113,7 @@ sub on_msg {
 
     $dbh->do("INSERT INTO messages (user,type,msg) VALUES (?,?,?)",undef,
              $event->{nick},$event->{type},$msg);
-    special($self,$msg,$event->{nick});
+    special($self, \%conf, $msg,$event->{nick});
 }
 
 %conf = loadconfig($configfile);

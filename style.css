@@ -266,7 +266,7 @@ ul.filters small {
     font-weight: bold;
 }
 
-/* highlight targetted line */
+/* highlight targeted line */
 li:target {
     background-color: #ff9;
 }

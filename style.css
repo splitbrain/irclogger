@@ -17,7 +17,7 @@ body {
 }
 body {
     margin: 1em 2em;
-    font: normal 100%/1.4 Frutiger, "Frutiger Linotype", Univers, Calibri, Myriad, "Nimbus Sans L", Tahoma, Geneva, "Helvetica Neue", Helvetica, Arial, sans-serif; /* §fsize §font */
+    font: normal 100%/1.4 Frutiger, Calibri, "Myriad Pro", Myriad, "Nimbus Sans L", Geneva, "Helvetica Neue", Helvetica, Arial, sans-serif; /* §fsize §font */
     -webkit-text-size-adjust: 100%;
 }
 
@@ -241,21 +241,25 @@ ul.filters small {
 
 #log li {
     clear: left;
-    padding-left: 10em;
+    padding-left: 11em;
 }
 
 #log a.time {
     float: left;
-    margin-left: -10em;
+    margin-left: -11em;
 }
 
 #log dt {
     font-weight: normal;
-    margin-left: -5em;
+    margin-left: -6em;
     float: left;
-    width: 5em;
+    width: 6em;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+#log dd {
+    padding-left: .2em;
 }
 
 #log .public dt {
@@ -293,10 +297,12 @@ a.skip {
 }
 #log dt {
     margin-left: 0;
+    width: auto;
     float: none;
 }
 #log dd {
     margin: -.2em 0 .2em 4.5em;
+    padding-left: 0;
 }
 
 

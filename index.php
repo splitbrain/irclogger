@@ -1,4 +1,5 @@
 <?php
+error_reporting(E_ALL & ~E_NOTICE);
 
 require("func.php");
 $conf = loadconfig('irclogger.config.php');
@@ -153,6 +154,10 @@ while($row = mysql_fetch_array($res, MYSQL_ASSOC)){
     <p>Powered by a homemade, experimental IRC logger written in Perl, PHP and MySQL.<br />
     A <a href="http://www.splitbrain.org">splitbrain.org</a> service.</p>
 </footer>
+
+<?php
+    include('/var/www/wiki/htdocs/lib/tpl/dokuwiki/dwtb.html');
+?>
 
 </body>
 </html>

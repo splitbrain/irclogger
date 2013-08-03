@@ -1,0 +1,60 @@
+# <?php die() ?>
+# configuration file for irc logger
+#
+#
+
+# DB access used by frontend and logger
+# db host
+db_host = 
+# db user
+db_user = 
+# password for db user
+db_pass = 
+# name of database
+db_name = 
+# table for message log
+db_table = messages
+# table for message storage system
+db_storetable = msgstore
+
+# where is the frontend installed to?
+baseurl = http://irc.dokuwiki.org/
+
+# log files for debug logging
+debug_log=/var/log/irclog/irclog-debug.log
+# log files for error logging
+error_log=/var/log/irclog/irclog.log
+
+# activate debug mode (0 = off, 1 = on)
+debug=0
+
+# IRC data used by logger only
+# address of irc server e.g. irc.freenode.net
+irc_host = 
+# port for irc server e.g. 6666
+irc_port = 
+# channelname to join (only one supported)
+irc_chan = 
+# nickname of bot
+irc_nick = 
+# long name of bot
+irc_name = 
+# password for irc user
+irc_pass = 
+# message posted after joining the channel
+irc_hello    = 
+# message sent to everyone joining the channel
+irc_warning  = 
+# message sent to everyone joining the channel for first time
+irc_newcomer  = 
+# message sent while leaving the channel
+irc_bye      = Unfortunately I have to leave you now. So don't do anything silly while I'm not here.
+# reconnect delay. if 0 no reconnect is attempted
+irc_reconnect = 4
+
+# pid file path for forked daemon
+pidfile=/tmp/irclog-fork.pid
+# init-script for restarting
+initscript=/etc/init.d/irclog
+# file for test results
+testfile=/tmp/irclog.testresult

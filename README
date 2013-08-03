@@ -1,8 +1,11 @@
-This is a simple IRC logger with a webinterface.
+This is an IRC logger with a webinterface.
 
 To install, create a new MySQL table using the provided 'mysql.sql'
-script and edit the 'irclogger.config.php' to match your database
-and IRC channel settings. Then run the 'irclogger.pl' script to
+script and edit the 'irclog.config.php' to match your database
+and IRC channel settings. Then run the 'irclog.pl -s' script to
 start logging.
 
-The logger needs the Net::IRC perl module.
+The logger needs the following perl modules:
+  POE::Component::IRC 
+  Digest::MD5
+  DBI::mysql

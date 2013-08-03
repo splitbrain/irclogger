@@ -75,8 +75,16 @@ sub log_db($$$) {
     if ( "$nick" eq "$conf{'irc_chan'}" ) {
         $type = 'public';
     }
-    log_debug("Logging information into database: Nick $nick; Type $type; msg $msg");
-    $dbh->do("INSERT INTO $conf{'db_table'} (user,type,msg) VALUES (?,?,?)",undef,$nick, $type, $msg);
+    log_debug("Logging information into database: Nick = $nick; Type = $type; msg = $msg");
+    $dbh->do("INSERT INTO $conf{'db_logtable'} (user,type,msg) VALUES (?,?,?)",undef,$nick, $type, $msg) or log_error("Couldn't write to table. $dbh->errstr");
+}
+
+sub save_msg($$$) {
+    my $sender = shift;
+    my $recipient = shift;
+    my $msg = shift;
+    log_debug("Saving message: Sender = $sender; Recipient = $recipient; Message = $msg");
+    $dbh->do("INSERT INTO $conf{'db_storetable'} (sender,recipient,msg) VALUES (?,?,?)",undef,$sender, $recipient, $msg) or log_error("Couldn't write to table. $dbh->errstr");
 }
 
 sub db_connect {
@@ -91,6 +99,12 @@ sub db_disconnect {
     log_debug("Disconnecting to database.");
     my $rc = $dbh->finish() or log_error("Error while finishing transactions: $dbh->errstr");
     $dbh->disconnect() or log_error("Error while disconnecting: $dbh->errstr");
+}
+
+sub get_recipient($) {
+#    my $msg = shift;
+#    my $rcpt = $msg =~ m/^
+#    my $slh = $dbh->do("SELECT user from $conf{'db_logtable'} where user like %$rcpt% group by user");
 }
 
 sub connect_irc {
@@ -148,7 +162,7 @@ sub __bootup {
     if ( $conf{'debug'} == 1 ) {
         open(STDOUT, ">>$conf{'debug_log'}") or die "Can't write to $conf{'stdout_log'}: $!";
     } else {
-        open(STDOUT, ">/dev/null'}");
+        open(STDOUT, ">/dev/null");
     }
     open(STDERR, ">>$conf{'error_log'}") or die "Can't write to $conf{'error_log'}: $!";
     defined(my $pid = fork) or die "Can't fork: $!";
@@ -169,14 +183,14 @@ sub __bootup {
 
         require $specialfile;
 
-        $irch = connect_irc;
         $dbh = db_connect;
+        $irch = connect_irc;
         use sigtrap 'handler', sub {
-            my $irc_connected = 0;
-            my $irc_logged_in = 0;
-            my $irc_channel = 0;
-            my $db_connected = 0;
-            my $db_execute = 0;
+            my $irc_connected = 2;
+            my $irc_logged_in = 2;
+            my $irc_channel = 3;
+            my $db_connected = 2;
+            my $db_execute = 2;
             log_debug("Testing daemon.");
             if ( $irch->connected() ) {
                 log_debug("IRC client is connected.");
@@ -207,22 +221,20 @@ sub __bootup {
             close($fh);
         }, 'USR2';
         use sigtrap 'handler', sub {
-            my $recon_db = 0;
-            my $recon_irc = 0;
+            my $reconnect = 0;
             log_debug("Reloading config file $configfile");
             my %confnew = loadconfig($configfile) or log_error("Error loading $configfile");
             log_debug("Checking for changes in config file.");
             foreach my $param (keys %confnew) {
                 if ( "$confnew{$param}" ne "$conf{$param}" ) {
                     log_debug("Found change for $param: old = $conf{$param} new = $confnew{$param}");
-                    if ( $param =~ /^db_/ ) { $recon_db = 1 }
-                    if ( $param =~ /^irc_/ ) { $recon_irc = 1 }
+                    if ( $param =~ /^db_/ or $param =~ /^irc_/ ) { $reconnect = 1 }
                     %conf = %confnew;
                 }
             }
         
-            if ( $recon_db == 1 or $recon_irc == 1 ) {
-                log_debug("Restarting bot.");
+            if ( $reconnect == 1 ) {
+                log_debug("Restarting bot because of changes for database or irc options.");
                 defined(my $pid = fork) or die "Can't fork: $!";
                 setsid or die "Can't start a new session: $!";
                 while(1) {
@@ -253,6 +265,7 @@ sub __stop {
     open(my $pidfile, '<' . $conf{'pidfile'}) or ( log_error("Couldn't open PID file $conf{'pidfile'}: $!") and print "Couldn't open PID file $conf{'pidfile'}: $!" );
     my $pid = <$pidfile>;
     kill('TERM', $pid);
+    return 0;
 }
 
 sub __reload {
@@ -261,15 +274,34 @@ sub __reload {
     kill('USR1', $pid);
 }
 
+# Returns:
+#  0 - success
+#  2 - error which needs to restart the bot
+#  3 - bot isNn't connected to channel
 sub __test {
-    open(my $pidfile, '<' . $conf{'pidfile'}) or ( log_error("Couldn't open PID file $conf{'pidfile'}: $!") and print "Couldn't open PID file $conf{'pidfile'}: $!" );
-    my $pid = <$pidfile>;
-    my $cnt = kill('USR2', $pid);
-    if ( $cnt > 0 and -r $conf{'testfile'} ) {
-        open($fh, '<' . $conf{'testfile'});
-        my @testres = <$fh>;
-        close($fh);
+    my $return = 0;
+    open(my $pidfile, '<' . $conf{'pidfile'}) or ( log_error("Couldn't open PID file $conf{'pidfile'}: $!") and print "Couldn't open PID file $conf{'pidfile'}: $!" and $return = 1 );
+    if ( $return == 0 ) {
+        my $pid = <$pidfile>;
+        my $cnt = kill('USR2', $pid);
+        sleep 1;
+        if ( $cnt > 0 and -r $conf{'testfile'} ) {
+            open(my $fh, '<' . $conf{'testfile'});
+            my @lines = <$fh>;
+            close($fh);
+            foreach my $line (@lines) {
+                my @data = split(/\s*=\s*/,$line,2);
+                if ($data[1] != 1) {
+                    log_debug("Test for $data[0] failed.");
+                    print "Test for $data[0] failed.\n";
+                    if ($return == 0 or $return > $data[1] ) {
+                        $return = $data[1];
+                    }
+                }
+            }
+        }
     }
+    return $return;
 }
 
 sub _start {
@@ -287,10 +319,6 @@ sub _start {
     return;
 }
 
-# Returns:
-#  1 - irc not connected
-#  2 - irc not logged in
-#  3 - 
 
 sub _stop {
     log_debug("Stopping daemon.");
@@ -299,7 +327,8 @@ sub _stop {
     irc_privmsg($irch, $conf{'irc_chan'}, $conf{'irc_bye'});
     $irch->yield('shutdown', 'Good (UGT) Night');
     unlink($conf{'pidfile'});
-    exit;
+    unlink($conf{'testfile'});
+    exit 0;
 }
 
 sub _default {
@@ -367,6 +396,7 @@ sub irc_public {
     my $nick = ( split /!/, $who )[0];
     log_db($nick, 'public', $msg);
     special($irch, \%conf, $msg, $nick);
+    my $recipient = get_recipient($msg);
 }
 
 sub irc_quit {
@@ -413,4 +443,6 @@ defined($action) or $action = 'test';
 %conf = loadconfig($configfile);
 
 log_debug("Running action $action");
-eval '__' . $action;
+my $ret = eval '__' . $action;
+exit $ret if defined($ret);
+

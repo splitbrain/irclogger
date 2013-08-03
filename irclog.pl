@@ -159,9 +159,12 @@ sub push_msgs($$) {
     my $msgs = get_msgs($nick);
     foreach my $key (keys $msgs) {
         log_debug("Got following data of database: " . Dumper($msgs->{$key}));
+        my $datetime = ( split(/:\d+$/, $msgs->{$key}->{dt}) )[0];
+        my @id = $dbh->selectrow_arrayref("SELECT id from $conf{'db_logtable'} where dt = '$datetime' and msg = '$msgs->{$key}->{msg}'") or log_error("Couldn't get id. $dbh->errstr");
+        log_debug("ID: " . Dumper(@id));
         $irch->yield('privmsg', $nick, "Hi, you were contacted by $msgs->{$key}->{sender}.");
         $irch->yield('privmsg', $nick, "The message was: $msgs->{$key}->{msg}");
-        $irch->yield('privmsg', $nick, "For reference have a look at IRC-log: $conf{'baseurl'}/index.php?d=" . (split(/ /,$msgs->{$key}->{dt}))[0]);
+        $irch->yield('privmsg', $nick, "For reference have a look at IRC-log: $conf{'baseurl'}/index.php?d=" . (split(/ /,$msgs->{$key}->{dt}))[0] . "#msg$id[0][0]");
         log_debug("Deleting data from database.");
         $dbh->do("DELETE FROM $conf{'db_storetable'} WHERE id = ?", undef, $msgs->{$key}->{id});
     }

@@ -20,7 +20,6 @@ my $chksum;
 my %opts;
 my $action;
 
-
 sub usage {
     print "This script controls an irc logging bot with command support.
 Available options:
@@ -93,11 +92,53 @@ sub db_disconnect {
     $dbh->disconnect() or log_error("Error while disconnecting: $dbh->errstr");
 }
 
+sub connect_irc {
+    log_debug("Connecting to irc.");
+    my $irch;
+    do {
+        $irch = POE::Component::IRC::State->spawn(
+            nick => $conf{'irc_nick'},
+            ircname => $conf{'irc_name'},
+            server  => $conf{'irc_host'},
+            port => $conf{'irc_port'},
+            password => $conf{'irc_pass'},
+            debug => $conf{'debug'},
+            plugin_debug => $conf{'debug'},
+            nodns => 1,
+            whojoiners => 0,
+         ) or log_error("Error while connecting to IRC $!. Will retry in 10 seconds");
+        sleep 10;
+    } until (defined($irch));
+    return $irch;
+}
+
+sub disconnect_irc($) {
+    log_debug("Disconnecting from irc.");
+    my $irch = shift;
+    $irch->yield('shutdown', $conf{'irc_bye'});
+    log_debug("Disconnected from irc.");
+}
+
+sub filemd5($) {
+    my $file = shift;
+    my $ctx = Digest::MD5->new;
+    open(my $spfh, '<' . $file);
+    binmode($spfh);
+    $ctx->addfile($spfh);
+    my $chksum = $ctx->hexdigest;
+    close($spfh);
+    undef $ctx;
+    return $chksum;
+}
+
 sub store_msg($$$) {
     my $irch = shift;
     my $msg = shift;
     my $nick = shift;
     my $rcpt = get_recipient($msg);
+    if ( not defined($rcpt) or ( defined($rcpt) and $rcpt eq '' ) ) {
+        return 0;
+    }
     if ( $rcpt =~ /\d+/ ) {
         $irch->yield('privmsg', $nick, "Couldn't store your message because there were $rcpt known by database.");
     } else {
@@ -139,12 +180,10 @@ sub get_recipient($) {
     my $rcpt = ($msg =~ m/^@(:?[^ ]+)\s.*$/)[0];
     if ( defined($rcpt) ) {
         log_debug("Recipient for stored message = $rcpt");
-        my $slh = $dbh->prepare("SELECT user from `$conf{'db_logtable'}` where user = '$rcpt' group by user") or log_error("Couldn't prepare statement." . $dbh->errstr);
-        $slh->execute() or log_error("Couldn't run statement. " . $dbh->errstr);
-        my @known_nicks = $slh->fetchrowall_arrayref;
+        my @known_nicks = @{ $dbh->selectall_arrayref("SELECT user from `$conf{'db_logtable'}` where user = '$rcpt' group by user", { Slice => {}}) } or log_error("Couldn't prepare statement." . $dbh->errstr);
         log_debug("Found " . ( $#known_nicks + 1 ) . " entries in database with $rcpt. " . Dumper(@known_nicks));
         if ( $#known_nicks + 1 == 1 ) {
-            return $known_nicks[0];
+            return $known_nicks[0]->{'user'};
         } else {
             return $#known_nicks + 1;
         }
@@ -160,46 +199,7 @@ sub get_msgs($) {
     return $msgs;
 }
 
-sub connect_irc {
-    log_debug("Connecting to irc.");
-    my $irch;
-    do {
-        $irch = POE::Component::IRC::State->spawn(
-            nick => $conf{'irc_nick'},
-            ircname => $conf{'irc_name'},
-            server  => $conf{'irc_host'},
-            port => $conf{'irc_port'},
-            password => $conf{'irc_pass'},
-            debug => $conf{'debug'},
-            plugin_debug => $conf{'debug'},
-            nodns => 1,
-            whojoiners => 0,
-         ) or log_error("Error while connecting to IRC $!. Will retry in 10 seconds");
-        sleep 10;
-    } until (defined($irch));
-    return $irch;
-}
-
-sub disconnect_irc($) {
-    log_debug("Disconnecting from irc.");
-    my $irch = shift;
-    $irch->yield('shutdown', $conf{'irc_bye'});
-    log_debug("Disconnected from irc.");
-}
-
-sub filemd5($) {
-    my $file = shift;
-    my $ctx = Digest::MD5->new;
-    open(my $spfh, '<' . $file);
-    binmode($spfh);
-    $ctx->addfile($spfh);
-    my $chksum = $ctx->hexdigest;
-    close($spfh);
-    undef $ctx;
-    return $chksum;
-}
-
-sub irc_privmsg($$$) {
+sub privmsg_irc($$$) {
     my $irch = shift;
     my $target = shift;
     my $msg = shift;
@@ -230,7 +230,6 @@ sub __bootup {
     while(1) {
         use strict;
         use warnings;
-        use sigtrap qw(handler _stop TERM);
 
         $chksum = filemd5($specialfile);
 
@@ -238,6 +237,16 @@ sub __bootup {
 
         $dbh = db_connect;
         $irch = connect_irc;
+        use sigtrap 'handler', sub {
+            log_debug("Stopping daemon.");
+            privmsg_irc($irch, $conf{'irc_chan'}, $conf{'irc_bye'});
+            sleep 2;
+            $irch->yield('shutdown', 'Good (UGT) Night');
+            db_disconnect();
+            unlink($conf{'pidfile'});
+            unlink($conf{'testfile'});
+            exit 0;
+        }, 'TERM';
         use sigtrap 'handler', sub {
             my $irc_connected = 2;
             my $irc_logged_in = 2;
@@ -372,18 +381,6 @@ sub _start {
     return;
 }
 
-
-sub _stop {
-    log_debug("Stopping daemon.");
-    my $heap = $_[HEAP];
-    my $irch = $heap->{irch};
-    irc_privmsg($irch, $conf{'irc_chan'}, $conf{'irc_bye'});
-    $irch->yield('shutdown', 'Good (UGT) Night');
-    unlink($conf{'pidfile'});
-    unlink($conf{'testfile'});
-    exit 0;
-}
-
 sub _default {
     my ($event, $args) = @_[ARG0 .. $#_];
     my @output = ( "@{ [time] } $event: " );
@@ -414,11 +411,11 @@ sub irc_join {
     log_db($nick, 'join', "$nick ($host) has entered the channel");
     if ( defined($conf{'irc_warning'}) and $conf{'irc_warning'} ne '' ) {
         log_db($conf{'irc_nick'}, 'privmsg', $conf{'irc_warning'});
-        irc_privmsg($irch, $nick, $conf{'irc_warning'});
+        privmsg_irc($irch, $nick, $conf{'irc_warning'});
     }
     if ( defined($conf{'irc_newcomer'}) and $conf{'irc_newcomer'} ne '' ) {
         log_db($conf{'irc_nick'}, 'privmsg', $conf{'irc_newcomer'});
-        irc_privmsg($irch, $nick, $conf{'irc_newcomer'});
+        privmsg_irc($irch, $nick, $conf{'irc_newcomer'});
     }
     if ( $nick ne $conf{'irc_nick'} ) {
         push_msgs($irch, $nick);
@@ -429,8 +426,8 @@ sub irc_msg {
     my ($sender, $who, $rcpnick, $msg, $identified) = @_[SENDER, ARG0 .. ARG3];
     my $irch = $sender->get_heap();
     my $nick = ( split /!/, $who )[0];
-    irc_privmsg($irch, $nick, "Thanks for talking to me but I'm just a humble ircbot of $conf{'irc_chan'}.");
-    irc_privmsg($irch, $nick, "If you want to know more about me write in the channel 'dokubot help'.");
+    privmsg_irc($irch, $nick, "Thanks for talking to me but I'm just a humble ircbot of $conf{'irc_chan'}.");
+    privmsg_irc($irch, $nick, "If you want to know more about me write in the channel 'dokubot help'.");
 }
 
 sub irc_nick {

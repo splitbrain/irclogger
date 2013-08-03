@@ -79,14 +79,6 @@ sub log_db($$$) {
     $dbh->do("INSERT INTO $conf{'db_logtable'} (user,type,msg) VALUES (?,?,?)",undef,$nick, $type, $msg) or log_error("Couldn't write to table. $dbh->errstr");
 }
 
-sub save_msg($$$) {
-    my $sender = shift;
-    my $recipient = shift;
-    my $msg = shift;
-    log_debug("Saving message: Sender = $sender; Recipient = $recipient; Message = $msg");
-    $dbh->do("INSERT INTO $conf{'db_storetable'} (sender,recipient,msg) VALUES (?,?,?)",undef,$sender, $recipient, $msg) or log_error("Couldn't write to table. $dbh->errstr");
-}
-
 sub db_connect {
     log_debug("Connecting to database.");
     my $dbh = DBI->connect("DBI:mysql:database=$conf{db_name};host=$conf{db_host}",
@@ -101,10 +93,71 @@ sub db_disconnect {
     $dbh->disconnect() or log_error("Error while disconnecting: $dbh->errstr");
 }
 
+sub store_msg($$$) {
+    my $irch = shift;
+    my $msg = shift;
+    my $nick = shift;
+    my $rcpt = get_recipient($msg);
+    if ( $rcpt =~ /\d+/ ) {
+        $irch->yield('privmsg', $nick, "Couldn't store your message because there were $rcpt known by database.");
+    } else {
+        log_debug("Try storing message for $rcpt.");
+        my @channels = $irch->nick_channels($rcpt);
+        log_debug("Found $rcpt in channels " . Dumper(@channels));
+        if ( $#channels == -1 ) {
+            save_msg($nick, $rcpt, $msg);
+            $irch->yield('privmsg', $nick, "Stored your message for $rcpt.");
+        }
+    }
+}
+
+sub push_msgs($$) {
+    my $irch = shift;
+    my $nick = shift;
+    log_debug("Getting messages stored for $nick");
+    my $msgs = get_msgs($nick);
+    foreach my $key (keys $msgs) {
+        log_debug("Got following data of database: " . Dumper($msgs->{$key}));
+        $irch->yield('privmsg', $nick, "Hi, you were contacted by $msgs->{$key}->{sender}.");
+        $irch->yield('privmsg', $nick, "The message was: $msgs->{$key}->{msg}");
+        $irch->yield('privmsg', $nick, "For reference have a look at IRC-log: $conf{'baseurl'}/index.php?d=" . (split(/ /,$msgs->{$key}->{dt}))[0]);
+        log_debug("Deleting data from database.");
+        $dbh->do("DELETE FROM $conf{'db_storetable'} WHERE id = ?", undef, $msgs->{$key}->{id});
+    }
+}
+
+sub save_msg($$$) {
+    my $sender = shift;
+    my $recipient = shift;
+    my $msg = shift;
+    log_debug("Saving message: Sender = $sender; Recipient = $recipient; Message = $msg");
+    $dbh->do("INSERT INTO $conf{'db_storetable'} (sender,recipient,msg) VALUES (?,?,?)",undef,$sender, $recipient, $msg) or log_error("Couldn't write to table. $dbh->errstr");
+}
+
 sub get_recipient($) {
-#    my $msg = shift;
-#    my $rcpt = $msg =~ m/^
-#    my $slh = $dbh->do("SELECT user from $conf{'db_logtable'} where user like %$rcpt% group by user");
+    my $msg = shift;
+    my $rcpt = ($msg =~ m/^@(:?[^ ]+)\s.*$/)[0];
+    if ( defined($rcpt) ) {
+        log_debug("Recipient for stored message = $rcpt");
+        my $slh = $dbh->prepare("SELECT user from `$conf{'db_logtable'}` where user = '$rcpt' group by user") or log_error("Couldn't prepare statement." . $dbh->errstr);
+        $slh->execute() or log_error("Couldn't run statement. " . $dbh->errstr);
+        my @known_nicks = $slh->fetchrowall_arrayref;
+        log_debug("Found " . ( $#known_nicks + 1 ) . " entries in database with $rcpt. " . Dumper(@known_nicks));
+        if ( $#known_nicks + 1 == 1 ) {
+            return $known_nicks[0];
+        } else {
+            return $#known_nicks + 1;
+        }
+    }
+}
+
+sub get_msgs($) {
+    my $nick = shift;
+    my $msgs;
+    my $slh = $dbh->prepare("SELECT * from `$conf{'db_storetable'}` where recipient = '$nick'");
+    $slh->execute;
+    $msgs = $slh->fetchall_hashref('id');
+    return $msgs;
 }
 
 sub connect_irc {
@@ -367,6 +420,9 @@ sub irc_join {
         log_db($conf{'irc_nick'}, 'privmsg', $conf{'irc_newcomer'});
         irc_privmsg($irch, $nick, $conf{'irc_newcomer'});
     }
+    if ( $nick ne $conf{'irc_nick'} ) {
+        push_msgs($irch, $nick);
+    }
 }
 
 sub irc_msg {
@@ -396,7 +452,7 @@ sub irc_public {
     my $nick = ( split /!/, $who )[0];
     log_db($nick, 'public', $msg);
     special($irch, \%conf, $msg, $nick);
-    my $recipient = get_recipient($msg);
+    store_msg($irch, $msg, $nick);
 }
 
 sub irc_quit {

@@ -376,7 +376,7 @@ sub _start {
     $irch->plugin_add('AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new(
             Channels => \@channels ,
             RejoinOnKick => 1,
-            Rejoin_delay => 2,
+            Rejoin_delay => $conf{'irc_reconnect'},
         )
     );
     $irch->yield( register => 'all' );

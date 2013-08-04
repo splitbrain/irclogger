@@ -46,15 +46,15 @@ irc_hello    =
 # message sent to everyone joining the channel
 irc_warning  = 
 # message sent to everyone joining the channel for first time
-irc_newcomer  = 
+irc_newcomer = 
 # message sent while leaving the channel
-irc_bye      = Unfortunately I have to leave you now. So don't do anything silly while I'm not here.
+irc_bye      = 
 # reconnect delay. if 0 no reconnect is attempted
 irc_reconnect = 4
 
 # pid file path for forked daemon
 pidfile=/tmp/irclog-fork.pid
-# init-script for restarting
+# bash-script for restarting the bot ('restart' is appended to it)
 initscript=/etc/init.d/irclog
 # file for test results
 testfile=/tmp/irclog.testresult

@@ -11,7 +11,7 @@ use Digest::MD5 qw(md5_hex);
 
 $0=~/^(.+[\\\/])[^\\\/]+[\\\/]*$/;
 my $scriptdir= $1 || "./";
-my $configfile = $scriptdir . 'irclogger.config.php';
+my $configfile = $scriptdir . 'irclog.config.php';
 my $specialfile = $scriptdir . "irclog.special.pl";
 my %conf;
 my $dbh;

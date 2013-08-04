@@ -16,15 +16,18 @@ sub special($$$) {
         privmsg_irc($irc, $conf->{'irc_chan'}, "See bugreport $_ at http://bugs.dokuwiki.org/index.php?do=details&task_id=$_") for @tickets;
     } elsif (my(@prs) = $msg =~ m/\bPR#(\d\d+)\b/g) {
         privmsg_irc($irc, $conf->{'irc_chan'}, "See pull request $_ at https://github.com/splitbrain/dokuwiki/pull/$_") for @prs;
-    } elsif (my(@pages) = $msg =~ m/(?:^|\s)(:?[\w-_]*:[\w-_]+(?::[\w-_]+)*)(?:\s|$)/g) {
+    } elsif (my(@pages) = $msg =~ m/(?:^|\s)(:?[-\w_#]*:[-\w_#]+(?::[-\w_#]+)*)(?:\s|$)/g) {
         my @out;
         for my $id (@pages) {
+            my @link = split(/#/, $id);
+            $id = $link[0];
+            my $anchor = lc($link[1]);
             $id =~ s/^://;
             (my $p = lc($id)) =~ s#:#/#g;
 
             # page must exist
             next unless -e "/var/www/wiki/htdocs/data/pages/$p.txt";
-            push(@out, 'http://www.dokuwiki.org/'.$id);
+            push(@out, 'http://www.dokuwiki.org/'.$id."#".$anchor);
         }
 
         privmsg_irc($irc, $conf->{'irc_chan'}, join(', ', @out)) if @out;

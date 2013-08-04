@@ -337,6 +337,7 @@ sub __reload {
     open(my $pidfile, '<' . $conf{'pidfile'}) or ( log_error("Couldn't open PID file $conf{'pidfile'}: $!") and print "Couldn't open PID file $conf{'pidfile'}: $!" );
     my $pid = <$pidfile>;
     kill('USR1', $pid);
+    return 0;
 }
 
 # Returns:

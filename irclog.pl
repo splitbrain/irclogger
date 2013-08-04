@@ -53,7 +53,7 @@ sub loadconfig($) {
 
 sub log_error($) {
     my $msg = shift();
-    open(my $file, '>>', $conf{'error_log'}) or die $!;
+    open(my $file, '>&STDERR') or die $!;
     print { $file } "@{ [time] } $msg\n";
     close($file);
 }
@@ -216,7 +216,7 @@ sub __bootup {
     umask 0;
     open(STDIN, '/dev/null') or die "Can't read /dev/null: $!";
     if ( $conf{'debug'} == 1 ) {
-        open(STDOUT, ">>$conf{'debug_log'}") or die "Can't write to $conf{'stdout_log'}: $!";
+        open(STDOUT, ">>$conf{'debug_log'}") or die "Can't write to $conf{'debug_log'}: $!";
     } else {
         open(STDOUT, ">/dev/null");
     }
@@ -227,7 +227,8 @@ sub __bootup {
         open(my $pidfile, '>', $conf{'pidfile'}) or log_error("Couldn't open PID file $conf{'pidfile'}: $!");
         print { $pidfile } $pid;
         close($pidfile);
-        exit;
+	unset $pid;
+	unset $pidfile;
     }
     setsid or die "Can't start a new session: $!";
     while(1) {
@@ -241,7 +242,7 @@ sub __bootup {
         $dbh = db_connect;
         $irch = connect_irc;
         use sigtrap 'handler', sub {
-            log_debug("Stopping daemon.");
+            log_error("Stopping daemon.");
             privmsg_irc($irch, $conf{'irc_chan'}, $conf{'irc_bye'});
             sleep 2;
             $irch->yield('shutdown', 'Good (UGT) Night');
@@ -256,7 +257,7 @@ sub __bootup {
             my $irc_channel = 3;
             my $db_connected = 2;
             my $db_execute = 2;
-            log_debug("Testing daemon.");
+            log_error("Testing daemon.");
             if ( $irch->connected() ) {
                 log_debug("IRC client is connected.");
                 $irc_connected = 1;
@@ -287,7 +288,7 @@ sub __bootup {
         }, 'USR2';
         use sigtrap 'handler', sub {
             my $reconnect = 0;
-            log_debug("Reloading config file $configfile");
+            log_error("Reloading config file $configfile");
             my %confnew = loadconfig($configfile) or log_error("Error loading $configfile");
             log_debug("Checking for changes in config file.");
             foreach my $param (keys %confnew) {
@@ -303,7 +304,8 @@ sub __bootup {
                 defined(my $pid = fork) or die "Can't fork: $!";
                 setsid or die "Can't start a new session: $!";
                 while(1) {
-                    system('/bin/bash', '-c', "$conf{'initscript'} restart");
+                    system('/bin/bash', '-c', "$0 -c $configfile -x");
+                    system('/bin/bash', '-c', "$0 -c $configfile -s");
                 }
             }
         
@@ -324,6 +326,34 @@ sub __bootup {
         );
         POE::Kernel->run();
     }
+    if ( $conf{'selfmonitor'} == 1 ) {
+        umask 0;
+        if ( $conf{'debug'} == 1 ) {
+            open(STDOUT, ">>$conf{'monitor_debug_log'}") or die "Can't write to $conf{'monitor_debug_log'}: $!";
+        } else {
+            open(STDOUT, ">/dev/null");
+        }
+        open(STDERR, ">>$conf{'monitor_log'}") or die "Can't write to $conf{'monitor_log'}: $!";
+        defined($pid = fork) or die "Can't fork: $!";
+        if ($pid) {
+	    my $pidfile = $conf{'pidfile'} . ".monitor";
+            log_error("PID of forked process is $pid.");
+            open(my $pfh, '>', $pidfile) or log_error("Couldn't open PID file $pidfile: $!");
+            print { $pfh } $pid;
+            close($pfh);
+            exit;
+        }
+        setsid or die "Can't start a new session: $!";
+        while (1) {
+            sleep 10;
+            
+            my $testres = __test();
+            if ( $testres == 2 ) {
+                system('/bin/bash', '-c', "$0 -c $configfile -x");
+                system('/bin/bash', '-c', "$0 -c $configfile -s");
+            }
+        }
+    }
 }
 
 sub __stop {
@@ -342,6 +372,7 @@ sub __reload {
 
 # Returns:
 #  0 - success
+#  1 - can't find process
 #  2 - error which needs to restart the bot
 #  3 - bot isNn't connected to channel
 sub __test {
@@ -382,6 +413,7 @@ sub _start {
     );
     $irch->yield( register => 'all' );
     $irch->yield( connect => { } );
+    log_error("Bot started and connected.");
     return;
 }
 

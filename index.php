@@ -2,7 +2,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 require("func.php");
-$conf = loadconfig('irclogger.config.php');
+$conf = loadconfig('irclog.config.php');
 
 
 header('Content-Type: text/html; charset=utf-8');

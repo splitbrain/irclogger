@@ -180,7 +180,7 @@ sub save_msg($$$) {
 
 sub get_recipient($) {
     my $msg = shift;
-    my $rcpt = ($msg =~ m/^@(:?[^ ]+)\s.*$/)[0];
+    my $rcpt = ($msg =~ m/^\s*@(:?[^ ]+)\s.*$/)[0];
     if ( defined($rcpt) ) {
         log_debug("Recipient for stored message = $rcpt");
         my @known_nicks = @{ $dbh->selectall_arrayref("SELECT user from `$conf{'db_logtable'}` where user = '$rcpt' group by user", { Slice => {}}) } or log_error("Couldn't prepare statement." . $dbh->errstr);

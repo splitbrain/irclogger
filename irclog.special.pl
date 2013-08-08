@@ -27,7 +27,11 @@ sub special($$$) {
 
             # page must exist
             next unless -e "/var/www/wiki/htdocs/data/pages/$p.txt";
-            push(@out, 'http://www.dokuwiki.org/'.$id."#".$anchor);
+            if (defined($anchor) and $anchor ne '' ) {
+                push(@out, 'http://www.dokuwiki.org/'.$id."#".$anchor);
+	    } else {
+                push(@out, 'http://www.dokuwiki.org/'.$id);
+            }
         }
 
         privmsg_irc($irc, $conf->{'irc_chan'}, join(', ', @out)) if @out;
@@ -88,3 +92,4 @@ sub special($$$) {
 }
 
 1;
+# vim:et:ts=4

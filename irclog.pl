@@ -535,3 +535,4 @@ log_debug("Running action $action");
 my $ret = eval '__' . $action;
 exit $ret if defined($ret);
 
+# vim:et:ts=4

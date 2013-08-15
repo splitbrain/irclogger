@@ -80,8 +80,7 @@ sub log_db($$$) {
 
 sub db_connect {
     log_debug("Connecting to database.");
-    my $dbh = DBI->connect("DBI:mysql:database=$conf{db_name};host=$conf{db_host}",
-                          $conf{db_user}, $conf{db_pass}) || log_error("failed to open DB connection");
+    my $dbh = DBI->connect("DBI:mysql:$conf{db_name}\@$conf{db_host}", $conf{db_user}, $conf{db_pass}, { AutoCommit => 1 }) || log_error("failed to open DB connection $DBI::errstr");
     $dbh->{mysql_auto_reconnect} = 1;
     return $dbh;
 }
@@ -140,7 +139,7 @@ sub store_msg($$$) {
         return 0;
     }
     if ( $rcpt =~ /\d+/ ) {
-        $irch->yield('privmsg', $nick, "Couldn't store your message because there were $rcpt known by database.");
+        $irch->yield('privmsg', $nick, "Couldn't store your message because there were $rcpt nicks known by database.");
     } else {
         log_debug("Try storing message for $rcpt.");
         my @channels = $irch->nick_channels($rcpt);
@@ -181,7 +180,7 @@ sub save_msg($$$) {
 sub get_recipient($) {
     my $msg = shift;
     my $rcpt = ($msg =~ m/^\s*@(:?[^ ]+)\s.*$/)[0];
-    if ( defined($rcpt) ) {
+    if ( defined($rcpt) and $rcpt ne '' ) {
         log_debug("Recipient for stored message = $rcpt");
         my @known_nicks = @{ $dbh->selectall_arrayref("SELECT user from `$conf{'db_logtable'}` where user = '$rcpt' group by user", { Slice => {}}) } or log_error("Couldn't prepare statement." . $dbh->errstr);
         log_debug("Found " . ( $#known_nicks + 1 ) . " entries in database with $rcpt. " . Dumper(@known_nicks));
@@ -224,11 +223,11 @@ sub __bootup {
     defined(my $pid = fork) or die "Can't fork: $!";
     if ($pid) {
         log_error("PID of forked process is $pid.");
-        open(my $pidfile, '>', $conf{'pidfile'}) or log_error("Couldn't open PID file $conf{'pidfile'}: $!");
+        open(my $pidfile, '>', $conf{'pidfile'}) or ( log_error("Couldn't open PID file $conf{'pidfile'}: $!") and return 0 );
         print { $pidfile } $pid;
         close($pidfile);
-	unset $pid;
-	unset $pidfile;
+        unset $pid;
+        unset $pidfile;
     }
     setsid or die "Can't start a new session: $!";
     while(1) {
@@ -239,7 +238,11 @@ sub __bootup {
 
         require $specialfile;
 
+        log_error("0");
         $dbh = db_connect;
+        log_error("1");
+        defined($dbh) or ( log_error("Connection to database failed with error: $DBI::errstr") and exit 3 );
+        log_error("2");
         $irch = connect_irc;
         use sigtrap 'handler', sub {
             log_error("Stopping daemon.");
@@ -267,6 +270,7 @@ sub __bootup {
                 $irc_logged_in = 1;
             }
             my $topic = $irch->yield('channel_topic', $conf{'irc_chan'});
+            log_debug("Output of irc_channel check: $topic");
             if ( defined($topic) ) {
                 log_debug("Bot connected to the channel $conf{'irc_chan'}");
                 $irc_channel = 1;
@@ -335,9 +339,9 @@ sub __bootup {
         }
         open(STDERR, ">>$conf{'monitor_log'}") or die "Can't write to $conf{'monitor_log'}: $!";
         defined($pid = fork) or die "Can't fork: $!";
+        log_error("PID of forked process is $pid.");
         if ($pid) {
-	    my $pidfile = $conf{'pidfile'} . ".monitor";
-            log_error("PID of forked process is $pid.");
+            my $pidfile = $conf{'pidfile'} . ".monitor";
             open(my $pfh, '>', $pidfile) or log_error("Couldn't open PID file $pidfile: $!");
             print { $pfh } $pid;
             close($pfh);
@@ -346,6 +350,7 @@ sub __bootup {
         setsid or die "Can't start a new session: $!";
         while (1) {
             sleep 10;
+            log_debug("Starting selfmonitoring loop.");
             
             my $testres = __test();
             if ( $testres == 2 ) {
@@ -377,7 +382,8 @@ sub __reload {
 #  3 - bot isNn't connected to channel
 sub __test {
     my $return = 0;
-    open(my $pidfile, '<' . $conf{'pidfile'}) or ( log_error("Couldn't open PID file $conf{'pidfile'}: $!") and print "Couldn't open PID file $conf{'pidfile'}: $!" and $return = 1 );
+    open(STDERR, ">>$conf{'monitor_log'}") or die "Can't write to $conf{'monitorr_log'}: $!";
+    open(my $pidfile, '<' . $conf{'pidfile'}) or ( log_error("Couldn't open PID file $conf{'pidfile'}: $!") and $return = 1 );
     if ( $return == 0 ) {
         my $pid = <$pidfile>;
         my $cnt = kill('USR2', $pid);
@@ -517,6 +523,11 @@ if (getopts('c:hrstx', \%opts)) {
         $action = 'bootup';
     }
     if ($opts{'t'}) {
+        print "Running selftest. The return code is one of the following:\n";
+        print "  0 - success\n";
+        print "  1 - can't find process\n";
+        print "  2 - error which needs to restart the bot\n";
+        print "  3 - bot isn't connected to channel\n";
         $action = 'test';
     }
     if ($opts{'x'}) {
@@ -527,7 +538,14 @@ if (getopts('c:hrstx', \%opts)) {
     exit 1;
 }
 
-defined($action) or $action = 'test';
+if (not defined($action)) {
+    print "Running selftest. The return code is one of the following:\n";
+    print "  0 - success\n";
+    print "  1 - can't find process\n";
+    print "  2 - error which needs to restart the bot\n";
+    print "  3 - bot isn't connected to channel\n";
+    $action = 'test';
+}
 
 %conf = loadconfig($configfile);
 

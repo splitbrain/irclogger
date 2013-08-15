@@ -21,7 +21,9 @@ sub special($$$) {
         for my $id (@pages) {
             my @link = split(/#/, $id);
             $id = $link[0];
-            my $anchor = lc($link[1]);
+            if (defined($link[1])) {
+                my $anchor = lc($link[1]);
+            }
             $id =~ s/^://;
             (my $p = lc($id)) =~ s#:#/#g;
 
@@ -29,7 +31,7 @@ sub special($$$) {
             next unless -e "/var/www/wiki/htdocs/data/pages/$p.txt";
             if (defined($anchor) and $anchor ne '' ) {
                 push(@out, 'http://www.dokuwiki.org/'.$id."#".$anchor);
-	    } else {
+            } else {
                 push(@out, 'http://www.dokuwiki.org/'.$id);
             }
         }

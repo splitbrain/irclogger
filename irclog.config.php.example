@@ -17,17 +17,6 @@ db_table = messages
 # table for message storage system
 db_storetable = msgstore
 
-# where is the frontend installed to?
-baseurl = http://irc.dokuwiki.org/
-
-# log files for debug logging
-debug_log=/var/log/irclog/irclog-debug.log
-# log files for error logging
-error_log=/var/log/irclog/irclog.log
-
-# activate debug mode (0 = off, 1 = on)
-debug=0
-
 # IRC data used by logger only
 # address of irc server e.g. irc.freenode.net
 irc_host = 
@@ -52,9 +41,20 @@ irc_bye      =
 # reconnect delay. if 0 no reconnect is attempted
 irc_reconnect = 4
 
+# where is the frontend installed to?
+baseurl = http://irc.dokuwiki.org/
+
+# log files for debug logging
+debug_log=/var/log/irclog/irclog-debug.log
+# log files for error logging
+error_log=/var/log/irclog/irclog.log
+
+# activate debug mode (0 = off, 1 = on)
+debug = 0
+# activate self monitoring (0 = off, 1 = on)
+selfmonitor = 1
+
 # pid file path for forked daemon
 pidfile=/tmp/irclog-fork.pid
-# bash-script for restarting the bot ('restart' is appended to it)
-initscript=/etc/init.d/irclog
 # file for test results
 testfile=/tmp/irclog.testresult

@@ -4,13 +4,11 @@
 use strict;
 use warnings;
 
-sub special($$$) {
+sub special($$$$) {
     my $irc  = shift;
     my $conf = shift;
     my $msg  = shift;
     my $nick = shift;
-    my $irc_nick = $conf->{'irc_nick'};
-    my $irc_chan = $conf->{'irc_chan'};
 
     if (my(@tickets) = $msg =~ m/\bFS#(\d\d+)\b/g) {
         privmsg_irc($irc, $conf->{'irc_chan'}, "See bugreport $_ at http://bugs.dokuwiki.org/index.php?do=details&task_id=$_") for @tickets;
@@ -22,14 +20,15 @@ sub special($$$) {
             my @link = split(/#/, $id);
             $id = $link[0];
             if (defined($link[1])) {
-                my $anchor = lc($link[1]);
+            my $anchor;
+                $anchor = lc($link[1]);
             }
             $id =~ s/^://;
             (my $p = lc($id)) =~ s#:#/#g;
 
             # page must exist
             next unless -e "/var/www/wiki/htdocs/data/pages/$p.txt";
-            if (defined($anchor) and $anchor ne '' ) {
+            if ( defined($anchor) and $anchor ne '' ) {
                 push(@out, 'http://www.dokuwiki.org/'.$id."#".$anchor);
             } else {
                 push(@out, 'http://www.dokuwiki.org/'.$id);

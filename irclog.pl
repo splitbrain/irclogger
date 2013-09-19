@@ -51,6 +51,21 @@ sub loadconfig($) {
     return %conf;
 }
 
+sub checklib($) {
+    my $file = shift;
+    if ( defined($file) ) {
+        if ( not -r $file ) {
+            log_error("Couldn't read file $file: no permission.");
+            return 0;
+        }
+        if ( system("/usr/bin/perl -c \"$file\"") != 0 ) {
+            log_error("Syntax error in file $file. See messages above.");
+            return 0;
+        }
+    }
+    return 1;
+}
+
 sub log_error($) {
     my $msg = shift();
     open(my $file, '>&STDERR') or die $!;
@@ -120,6 +135,7 @@ sub disconnect_irc($) {
 
 sub filemd5($) {
     my $file = shift;
+    log_debug("Generating MD5 sum of $file.");
     my $ctx = Digest::MD5->new;
     open(my $spfh, '<' . $file);
     binmode($spfh);
@@ -127,6 +143,7 @@ sub filemd5($) {
     my $chksum = $ctx->hexdigest;
     close($spfh);
     undef $ctx;
+    log_debug("MD5 sum of $file generated: $chksum.");
     return $chksum;
 }
 
@@ -231,18 +248,16 @@ sub __bootup {
     }
     setsid or die "Can't start a new session: $!";
     while(1) {
+        log_debug("Forked successfully");
         use strict;
         use warnings;
 
         $chksum = filemd5($specialfile);
 
-        require $specialfile;
+        checklib($specialfile) and require $specialfile;
 
-        log_error("0");
         $dbh = db_connect;
-        log_error("1");
         defined($dbh) or ( log_error("Connection to database failed with error: $DBI::errstr") and exit 3 );
-        log_error("2");
         $irch = connect_irc;
         use sigtrap 'handler', sub {
             log_error("Stopping daemon.");
@@ -316,7 +331,7 @@ sub __bootup {
             my $chksum_new = filemd5($specialfile);
 
             log_debug("Checking for changes in special file. old MD5 = $chksum; new MD5 = $chksum_new");
-            if ( "$chksum" ne "$chksum_new" ) {
+            if ( "$chksum" ne "$chksum_new" and checklib($specialfile) ) {
                 log_debug("Reloading $specialfile.");
                 delete $INC{$specialfile};
                 require $specialfile;

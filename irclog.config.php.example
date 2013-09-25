@@ -6,6 +6,8 @@
 # DB access used by frontend and logger
 # db host
 db_host = 
+# db port
+db_port = 
 # db user
 db_user = 
 # password for db user

@@ -18,9 +18,9 @@ sub special($$$$) {
         my @out;
         for my $id (@pages) {
             my @link = split(/#/, $id);
+            my $anchor;
             $id = $link[0];
             if (defined($link[1])) {
-            my $anchor;
                 $anchor = lc($link[1]);
             }
             $id =~ s/^://;

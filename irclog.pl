@@ -1,4 +1,16 @@
 #!/usr/bin/perl
+# TODO:
+#   implement clean test functions
+#       db connection
+#       irc connection
+#       db table
+#       db rights
+#   implement more error-handling
+#   add documentation using pod
+#   add multichannel support
+#   improve today & yesterday filter of webinterface
+#
+#
 use strict;
 use warnings;
 use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin);
@@ -93,14 +105,14 @@ sub log_db($$$) {
     $dbh->do("INSERT INTO $conf{'db_logtable'} (user,type,msg) VALUES (?,?,?)",undef,$nick, $type, $msg) or log_error("Couldn't write to table. $dbh->errstr");
 }
 
-sub db_connect {
+sub connect_db {
     log_debug("Connecting to database.");
-    my $dbh = DBI->connect("DBI:mysql:$conf{db_name}\@$conf{db_host}", $conf{db_user}, $conf{db_pass}, { AutoCommit => 1 }) || log_error("failed to open DB connection $DBI::errstr");
+    my $dbh = DBI->connect("DBI:mysql:database=$conf{db_name};host=$conf{db_host};port=$conf{db_port}", $conf{db_user}, $conf{db_pass}, { AutoCommit => 1 }) || log_error("failed to open DB connection: $DBI::errstr");
     $dbh->{mysql_auto_reconnect} = 1;
     return $dbh;
 }
 
-sub db_disconnect {
+sub disconnect_db {
     log_debug("Disconnecting to database.");
     my $rc = $dbh->finish() or log_error("Error while finishing transactions: $dbh->errstr");
     $dbh->disconnect() or log_error("Error while disconnecting: $dbh->errstr");
@@ -256,7 +268,7 @@ sub __bootup {
 
         checklib($specialfile) and require $specialfile;
 
-        $dbh = db_connect;
+        $dbh = connect_db;
         defined($dbh) or ( log_error("Connection to database failed with error: $DBI::errstr") and exit 3 );
         $irch = connect_irc;
         use sigtrap 'handler', sub {
@@ -264,7 +276,7 @@ sub __bootup {
             privmsg_irc($irch, $conf{'irc_chan'}, $conf{'irc_bye'});
             sleep 2;
             $irch->yield('shutdown', 'Good (UGT) Night');
-            db_disconnect();
+            disconnect_db();
             unlink($conf{'pidfile'});
             unlink($conf{'testfile'});
             exit 0;
@@ -505,7 +517,7 @@ sub irc_public {
     my $irch = $sender->get_heap();
     my $nick = ( split /!/, $who )[0];
     log_db($nick, 'public', $msg);
-    special($irch, \%conf, $msg, $nick);
+    exists(&special) and special($irch, \%conf, $msg, $nick) or privmsg_irc($irch, $conf{irc_chan}, 'Currently I have an amnesia. Please contact the bot administatrator.');
     store_msg($irch, $msg, $nick);
 }
 

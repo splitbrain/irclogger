@@ -6,6 +6,9 @@
 #       db table
 #       db rights
 #   implement more error-handling
+#       db not connected
+#       irc not connected
+#       insufficient rights on db
 #   add documentation using pod
 #   add multichannel support
 #   improve today & yesterday filter of webinterface

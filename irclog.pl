@@ -23,8 +23,10 @@ use Getopt::Std;
 use POSIX qw(setsid);
 use POSIX ();
 use Digest::MD5 qw(md5_hex);
+use Cwd qw(abs_path);
 
-$0=~/^(.+[\\\/])[^\\\/]+[\\\/]*$/;
+my $script = abs_path($0);
+$script =~ /^(.+[\\\/])[^\\\/]+[\\\/]*$/;
 my $scriptdir= $1 || "./";
 my $configfile = $scriptdir . 'irclog.config.php';
 my $specialfile = $scriptdir . "irclog.special.pl";
@@ -105,7 +107,7 @@ sub log_db($$$) {
         $type = 'public';
     }
     log_debug("Logging information into database: Nick = $nick; Type = $type; msg = $msg");
-    $dbh->do("INSERT INTO $conf{'db_logtable'} (user,type,msg) VALUES (?,?,?)",undef,$nick, $type, $msg) or log_error("Couldn't write to table. $dbh->errstr");
+    $dbh->do("INSERT INTO $conf{'db_logtable'} (user,type,msg) VALUES (?,?,?)",undef,$nick, $type, $msg) or ( log_error("Couldn't write to table. $dbh->errstr") and return 0 );
 }
 
 sub connect_db {
@@ -152,7 +154,7 @@ sub filemd5($) {
     my $file = shift;
     log_debug("Generating MD5 sum of $file.");
     my $ctx = Digest::MD5->new;
-    open(my $spfh, '<' . $file);
+    open(my $spfh, '<' . $file) or log_error("Couldn't open file $file for MD5 calculation: $!");
     binmode($spfh);
     $ctx->addfile($spfh);
     my $chksum = $ctx->hexdigest;
@@ -233,6 +235,16 @@ sub get_msgs($) {
     return $msgs;
 }
 
+=head1 privmsg_irc()
+
+Arguments: irc-handler, target channel, message
+
+Returns  : none
+
+Sends given message as private message to given chanel.
+
+=cut
+
 sub privmsg_irc($$$) {
     my $irch = shift;
     my $target = shift;
@@ -243,29 +255,94 @@ sub privmsg_irc($$$) {
     }
 }
 
+=head1 bootup()
+
+Arguments: none
+
+Returns  : none
+
+This is one of the main functions and starts the irclogger.
+
+It also registers the following process signals:
+
+=over 1
+
+=item L<TERM|/"sigtrap TERM"> => stops irclogger
+
+=item L<USR1|/"sigtrap USR1"> => reload configuration files and restart if needed
+
+=item L<USR2|/"sigtrap USR2"> => run function tests
+
+=back
+
+=cut
+
 sub __bootup {
-    umask 0;
-    open(STDIN, '/dev/null') or die "Can't read /dev/null: $!";
-    if ( $conf{'debug'} == 1 ) {
-        open(STDOUT, ">>$conf{'debug_log'}") or die "Can't write to $conf{'debug_log'}: $!";
-    } else {
-        open(STDOUT, ">/dev/null");
+    if ( $conf{'selfmonitor'} == 1 ) {
+        log_debug("Starting selfmonitoring fork.");
+        umask 0;
+        chdir("/");
+        open(STDIN, '</dev/null');
+        open(STDOUT, '>/dev/null');
+        open(STDERR, '>/dev/null') or die "Can't write to $conf{'monitor_log'}: $!";
+        defined(my $pid = fork) or die "Can't fork: $!";
+        if ($pid) {
+            log_error("PID of forked selfmonitoring process is $pid.");
+            my $pidfile = $conf{'pidfile'} . ".monitor";
+            open(my $pfh, '>', $pidfile) or log_error("Couldn't open PID file $pidfile: $!");
+            print { $pfh } $pid;
+            close($pfh);
+            unset($pidfile);
+        }
+        setsid or die "Can't start a new session: $!";
+        if ($pid == 0) {
+            sleep 20;
+            log_debug("Starting selfmonitoring loop.");
+            if ( $conf{'debug'} == 1 ) {
+                open(STDOUT, ">>$conf{'monitor_debug_log'}") or die "Can't write to $conf{'monitor_debug_log'}: $!";
+            } else {
+                open(STDOUT, ">/dev/null");
+            }
+            open(STDERR, ">>$conf{'monitor_log'}") or die "Can't write to $conf{'monitor_log'}: $!";
+            log_error("Started selfmonitoring.");
+            
+            while (1) {
+                sleep 10;
+                my $testres = __test();
+                log_debug("Test result: $testres of monitor $pid");
+                if ( $testres == 2 ) {
+                    system('/bin/bash', '-c', "$0 -c $configfile -x");
+                    system('/bin/bash', '-c', "$0 -c $configfile -s");
+                    exit;
+                }
+            }
+        }
     }
-    open(STDERR, ">>$conf{'error_log'}") or die "Can't write to $conf{'error_log'}: $!";
+    log_debug("Starting main fork.");
+    umask 0;
+    chdir("/");
+    open(STDIN, '</dev/null') or die "Can't read /dev/null: $!";
+    open(STDOUT, '>/dev/null');
+    open(STDERR, '>/dev/null');
     defined(my $pid = fork) or die "Can't fork: $!";
     if ($pid) {
-        log_error("PID of forked process is $pid.");
+        log_error("PID of forked main process is $pid.");
         open(my $pidfile, '>', $conf{'pidfile'}) or ( log_error("Couldn't open PID file $conf{'pidfile'}: $!") and return 0 );
         print { $pidfile } $pid;
         close($pidfile);
-        unset $pid;
         unset $pidfile;
     }
     setsid or die "Can't start a new session: $!";
-    while(1) {
-        log_debug("Forked successfully");
+    while($pid == 0) {
         use strict;
         use warnings;
+        if ( $conf{'debug'} == 1 ) {
+            open(STDOUT, ">>$conf{'debug_log'}") or die "Can't write to $conf{'debug_log'}: $!";
+        } else {
+            open(STDOUT, ">/dev/null");
+        }
+        open(STDERR, ">>$conf{'error_log'}") or die "Can't write to $conf{'error_log'}: $!";
+        log_error("Started main process.");
 
         $chksum = filemd5($specialfile);
 
@@ -274,16 +351,70 @@ sub __bootup {
         $dbh = connect_db;
         defined($dbh) or ( log_error("Connection to database failed with error: $DBI::errstr") and exit 3 );
         $irch = connect_irc;
+
+=head2 sigtrap TERM
+
+Signal handler for TERM.
+
+On SIGTERM the following actions are done:
+
+=over 1
+
+=item message is logged into error-log
+
+=item configured Bye-message is logged into database
+
+=item irc-handler runs shutdown command to log out of irc properly
+
+=item disconnect_db() is run to finish db connection properly
+
+=item pid file and test file are removed
+
+=item program exits with code 0
+
+=back
+
+=cut
+        
         use sigtrap 'handler', sub {
             log_error("Stopping daemon.");
             privmsg_irc($irch, $conf{'irc_chan'}, $conf{'irc_bye'});
             sleep 2;
             $irch->yield('shutdown', 'Good (UGT) Night');
             disconnect_db();
+            open(FILE,$conf{'pidfile'} . ".monitor") || die "failed to open pid file $conf{'pidfile'}.monitor";
+            my @lines = <FILE>;
+            close FILE;
+            log_debug("Stopping selfmonitoring with PID $lines[0]");
+            kill($lines[0]);
             unlink($conf{'pidfile'});
+            unlink($conf{'pidfile'} . ".monitor");
             unlink($conf{'testfile'});
             exit 0;
         }, 'TERM';
+
+=head2 sigtrap USR2
+
+Signal handler for USR2.
+
+On SIGUSR2 all the following functionalities are tested:
+
+=over 1
+
+=item IRC connection
+
+=item login status for IRC
+
+=item join status for configured channels
+
+=item database connection
+
+=item execution status for SQL commands on database
+
+=back
+
+=cut
+
         use sigtrap 'handler', sub {
             my $irc_connected = 2;
             my $irc_logged_in = 2;
@@ -300,8 +431,8 @@ sub __bootup {
                 $irc_logged_in = 1;
             }
             my $topic = $irch->yield('channel_topic', $conf{'irc_chan'});
-            log_debug("Output of irc_channel check: $topic");
             if ( defined($topic) ) {
+                log_debug("Output of irc_channel check: $topic");
                 log_debug("Bot connected to the channel $conf{'irc_chan'}");
                 $irc_channel = 1;
             }
@@ -360,35 +491,14 @@ sub __bootup {
         );
         POE::Kernel->run();
     }
-    if ( $conf{'selfmonitor'} == 1 ) {
-        umask 0;
-        if ( $conf{'debug'} == 1 ) {
-            open(STDOUT, ">>$conf{'monitor_debug_log'}") or die "Can't write to $conf{'monitor_debug_log'}: $!";
-        } else {
-            open(STDOUT, ">/dev/null");
-        }
-        open(STDERR, ">>$conf{'monitor_log'}") or die "Can't write to $conf{'monitor_log'}: $!";
-        defined($pid = fork) or die "Can't fork: $!";
-        log_error("PID of forked process is $pid.");
-        if ($pid) {
-            my $pidfile = $conf{'pidfile'} . ".monitor";
-            open(my $pfh, '>', $pidfile) or log_error("Couldn't open PID file $pidfile: $!");
-            print { $pfh } $pid;
-            close($pfh);
-            exit;
-        }
-        setsid or die "Can't start a new session: $!";
-        while (1) {
-            sleep 10;
-            log_debug("Starting selfmonitoring loop.");
-            
-            my $testres = __test();
-            if ( $testres == 2 ) {
-                system('/bin/bash', '-c', "$0 -c $configfile -x");
-                system('/bin/bash', '-c', "$0 -c $configfile -s");
-            }
-        }
+    if ( $conf{'debug'} == 1 ) {
+        open(STDOUT, ">>$conf{'debug_log'}") or die "Can't write to $conf{'debug_log'}: $!";
+    } else {
+        open(STDOUT, ">/dev/null");
     }
+    open(STDERR, ">>$conf{'error_log'}") or die "Can't write to $conf{'error_log'}: $!";
+    log_debug("Finished main process loop.");
+    exit;
 }
 
 sub __stop {
@@ -515,12 +625,33 @@ sub irc_part {
     log_db($nick, 'part', "$nick ($host) has left the channel ($channel) with message '$partmsg'");
 }
 
+=head1 irc_public()
+
+Arguments: none
+
+Returns  : none
+
+This function is called by IRC module for each message with type 'public'. Thus each message on a channel.
+
+It logs the message in the database, runs L<C<special()>|/"special"> and runs L<C<store_msg()>|/"store_msg()">.
+
+=cut
+
 sub irc_public {
     my ($sender, $who, $channels, $msg, $identified) = @_[SENDER, ARG0 .. ARG3];
     my $irch = $sender->get_heap();
     my $nick = ( split /!/, $who )[0];
-    log_db($nick, 'public', $msg);
-    exists(&special) and special($irch, \%conf, $msg, $nick) or privmsg_irc($irch, $conf{irc_chan}, 'Currently I have an amnesia. Please contact the bot administatrator.');
+    log_debug("irc_public -> Sender: $sender ; Nick: $nick ; CHannels: " . Dumper($channels) . " ; Msg: $msg");
+    if (not log_db($nick, 'public', $msg)) {
+        foreach my $chan ($channels) {
+            privmsg_irc($irch, $chan, 'My database ditched me. Please contact the bot administrator.');
+        }
+    }
+    if (exists(&special)) {
+        special($irch, \%conf, $msg, $nick)
+    } else {
+        privmsg_irc($irch, $conf{irc_chan}, 'Currently I have an amnesia. Please contact the bot administatrator.');
+    }
     store_msg($irch, $msg, $nick);
 }
 

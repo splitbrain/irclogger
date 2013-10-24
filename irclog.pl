@@ -5,6 +5,7 @@
 #       irc connection
 #       db table
 #       db rights
+#       channel connection (sending channel commands like 'names' results in recieving irc_353 & irc_366 and return of null)
 #   implement more error-handling
 #       db not connected
 #       irc not connected
@@ -278,46 +279,6 @@ It also registers the following process signals:
 =cut
 
 sub __bootup {
-    if ( $conf{'selfmonitor'} == 1 ) {
-        log_debug("Starting selfmonitoring fork.");
-        umask 0;
-        chdir("/");
-        open(STDIN, '</dev/null');
-        open(STDOUT, '>/dev/null');
-        open(STDERR, '>/dev/null') or die "Can't write to $conf{'monitor_log'}: $!";
-        defined(my $pid = fork) or die "Can't fork: $!";
-        if ($pid) {
-            log_error("PID of forked selfmonitoring process is $pid.");
-            my $pidfile = $conf{'pidfile'} . ".monitor";
-            open(my $pfh, '>', $pidfile) or log_error("Couldn't open PID file $pidfile: $!");
-            print { $pfh } $pid;
-            close($pfh);
-            unset($pidfile);
-        }
-        setsid or die "Can't start a new session: $!";
-        if ($pid == 0) {
-            sleep 20;
-            log_debug("Starting selfmonitoring loop.");
-            if ( $conf{'debug'} == 1 ) {
-                open(STDOUT, ">>$conf{'monitor_debug_log'}") or die "Can't write to $conf{'monitor_debug_log'}: $!";
-            } else {
-                open(STDOUT, ">/dev/null");
-            }
-            open(STDERR, ">>$conf{'monitor_log'}") or die "Can't write to $conf{'monitor_log'}: $!";
-            log_error("Started selfmonitoring.");
-            
-            while (1) {
-                sleep 10;
-                my $testres = __test();
-                log_debug("Test result: $testres of monitor $pid");
-                if ( $testres == 2 ) {
-                    system('/bin/bash', '-c', "$0 -c $configfile -x");
-                    system('/bin/bash', '-c', "$0 -c $configfile -s");
-                    exit;
-                }
-            }
-        }
-    }
     log_debug("Starting main fork.");
     umask 0;
     chdir("/");
@@ -386,7 +347,7 @@ On SIGTERM the following actions are done:
             my @lines = <FILE>;
             close FILE;
             log_debug("Stopping selfmonitoring with PID $lines[0]");
-            kill($lines[0]);
+            kill('TERM', $lines[0]);
             unlink($conf{'pidfile'});
             unlink($conf{'pidfile'} . ".monitor");
             unlink($conf{'testfile'});
@@ -430,9 +391,10 @@ On SIGUSR2 all the following functionalities are tested:
                 log_debug("IRC client is logged in.");
                 $irc_logged_in = 1;
             }
-            my $topic = $irch->yield('channel_topic', $conf{'irc_chan'});
-            if ( defined($topic) ) {
-                log_debug("Output of irc_channel check: $topic");
+            my $names = $irch->yield('names', $conf{'irc_chan'});
+            log_debug(Dumper($irch->yield('names', $conf{'irc_chan'})));
+            if ( defined($names) ) {
+                log_debug("Output of irc_channel check: $names");
                 log_debug("Bot connected to the channel $conf{'irc_chan'}");
                 $irc_channel = 1;
             }
@@ -444,7 +406,7 @@ On SIGUSR2 all the following functionalities are tested:
             $slh->execute();
             my @testres = $slh->fetchrow_array;
             if ( "$testres[0]" eq "test" ) {
-                log_debug("Test select succeeded.");
+                log_debug("Test SQL-'select' succeeded.");
                 $db_execute = 1;
             }
             open(my $fh, '>' . $conf{'testfile'});
@@ -499,6 +461,49 @@ On SIGUSR2 all the following functionalities are tested:
     open(STDERR, ">>$conf{'error_log'}") or die "Can't write to $conf{'error_log'}: $!";
     log_debug("Finished main process loop.");
     exit;
+}
+
+sub __selfmonitor {
+    if ( $conf{'selfmonitor'} == 1 ) {
+        log_debug("Starting selfmonitoring fork.");
+        umask 0;
+        chdir("/");
+        open(STDIN, '</dev/null');
+        open(STDOUT, '>/dev/null');
+        open(STDERR, '>/dev/null') or die "Can't write to $conf{'monitor_log'}: $!";
+        defined(my $pid = fork) or die "Can't fork: $!";
+        if ($pid) {
+            log_error("PID of forked selfmonitoring process is $pid.");
+            my $pidfile = $conf{'pidfile'} . ".monitor";
+            open(my $pfh, '>', $pidfile) or log_error("Couldn't open PID file $pidfile: $!");
+            print { $pfh } $pid;
+            close($pfh);
+            unset($pidfile);
+        }
+        setsid or die "Can't start a new session: $!";
+        if ($pid == 0) {
+            sleep 20;
+            log_debug("Starting selfmonitoring loop.");
+            if ( $conf{'debug'} == 1 ) {
+                open(STDOUT, ">>$conf{'monitor_debug_log'}") or die "Can't write to $conf{'monitor_debug_log'}: $!";
+            } else {
+                open(STDOUT, ">/dev/null");
+            }
+            open(STDERR, ">>$conf{'monitor_log'}") or die "Can't write to $conf{'monitor_log'}: $!";
+            log_error("Started selfmonitoring.");
+            
+            while (1) {
+                sleep 10;
+                my $testres = __test();
+                log_debug("Test result: $testres of monitor $pid");
+                if ( $testres == 2 ) {
+                    system('/bin/bash', '-c', "$0 -c $configfile -x");
+                    system('/bin/bash', '-c', "$0 -c $configfile -s");
+                    exit;
+                }
+            }
+        }
+    }
 }
 
 sub __stop {
@@ -584,6 +589,26 @@ sub irc_001 {
     my $irch = $sender->get_heap();
     print "Connected to ", $irch->server_name(), "\n";
     return;
+}
+
+=head1 irc_353()
+
+Handles list returned by IRC-command 'names'.
+
+This command is used by selfmonitor to check channel connectivity.
+
+=cut
+
+=head1 irc_366()
+
+Handles the message ':End of NAMES list'.
+
+ATM nothing should be done.
+
+=cut
+
+sub irc_366 {
+    return 1;
 }
 
 sub irc_join {
@@ -712,6 +737,7 @@ if (not defined($action)) {
 
 log_debug("Running action $action");
 my $ret = eval '__' . $action;
+if ( $action eq 'bootup' ) { __selfmonitor(); }
 exit $ret if defined($ret);
 
 # vim:et:ts=4

@@ -20,6 +20,6 @@ function getdbhandle($conf){
     $dbh = mysqli_connect($conf['db_host'],$conf['db_user'],$conf['db_pass']) or
             die("failed to connect to database");
     mysqli_select_db($dbh, $conf['db_name']) or die('Could not select database');
-    mysqli_query($dbh, "SET NAMES 'utf8'");
+    #mysqli_query($dbh, "SET NAMES 'utf8'");
     return $dbh;
 }

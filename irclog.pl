@@ -336,7 +336,7 @@ On SIGTERM the following actions are done:
 =back
 
 =cut
-        
+
         use sigtrap 'handler', sub {
             log_error("Stopping daemon.");
             privmsg_irc($irch, $conf{'irc_chan'}, $conf{'irc_bye'});
@@ -425,7 +425,7 @@ On SIGUSR2 all the following functionalities are tested:
                     %conf = %confnew;
                 }
             }
-        
+
             if ( $reconnect == 1 ) {
                 log_debug("Restarting bot because of changes for database or irc options.");
                 defined(my $pid = fork) or die "Can't fork: $!";
@@ -435,7 +435,7 @@ On SIGUSR2 all the following functionalities are tested:
                     system('/bin/bash', '-c', "$0 -c $configfile -s");
                 }
             }
-        
+
             my $chksum_new = filemd5($specialfile);
 
             log_debug("Checking for changes in special file. old MD5 = $chksum; new MD5 = $chksum_new");
@@ -491,7 +491,7 @@ sub __selfmonitor {
             }
             open(STDERR, ">>$conf{'monitor_log'}") or die "Can't write to $conf{'monitor_log'}: $!";
             log_error("Started selfmonitoring.");
-            
+
             while (1) {
                 sleep 10;
                 my $testres = __test();
@@ -673,7 +673,7 @@ sub irc_public {
         }
     }
     if (exists(&special)) {
-        special($irch, \%conf, $msg, $nick)
+        special($irch, \%conf, $msg, $nick);
     } else {
         privmsg_irc($irch, $conf{irc_chan}, 'Currently I have an amnesia. Please contact the bot administatrator.');
     }

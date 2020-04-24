@@ -86,7 +86,7 @@ if($sql) while($row = mysqli_fetch_array($res, MYSQLI_ASSOC)){
         echo '<dt class="server">'.$row['type'].'</dt>';
     }
     $msg = htmlspecialchars(  $row['msg']);
-    $msg = preg_replace_callback('/((https?|ftp):\/\/[\w-?&;#~=\.\/\@%:]+[\w\/])/ui',
+    $msg = preg_replace_callback('/((https?|ftp):\/\/[\w\-?&;#~=\.\/\@%:]+[\w\/])/ui',
                                  'format_link',$msg);
 
     echo '<dd>';

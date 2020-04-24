@@ -191,7 +191,7 @@ sub push_msgs($$) {
     my $nick = shift;
     log_debug("Getting messages stored for $nick");
     my $msgs = get_msgs($nick);
-    foreach my $key (keys $msgs) {
+    foreach my $key (keys %$msgs) {
         log_debug("Got following data of database: " . Dumper($msgs->{$key}));
         my $datetime = ( split(/:\d+$/, $msgs->{$key}->{dt}) )[0];
         my @id = $dbh->selectrow_arrayref("SELECT id from $conf{'db_logtable'} where dt = '$datetime' and msg = '$msgs->{$key}->{msg}'") or log_error("Couldn't get id. $dbh->errstr");

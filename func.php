@@ -17,9 +17,9 @@ function loadconfig($file){
 }
 
 function getdbhandle($conf){
-    $dbh = mysql_connect($conf['db_host'],$conf['db_user'],$conf['db_pass']) or
+    $dbh = mysqli_connect($conf['db_host'],$conf['db_user'],$conf['db_pass']) or
             die("failed to connect to database");
-    mysql_select_db($conf['db_name'],$dbh) or die('Could not select database');
-    mysql_query("SET NAMES 'utf8'");
+    mysqli_select_db($dbh, $conf['db_name']) or die('Could not select database');
+    mysqli_query("SET NAMES 'utf8'");
     return $dbh;
 }

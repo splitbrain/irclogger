@@ -32,14 +32,14 @@ if($_REQUEST['s']){
              WHERE user = '".addslashes($_REQUEST['u'])."'
           ORDER BY dt DESC, id DESC
              LIMIT 1";
-    $res = mysql_query($sql,$dbh);
-    $row = mysql_fetch_array($res, MYSQL_ASSOC);
+    $res = mysqli_query($dbh,$sql);
+    $row = mysqli_fetch_array($res, MYSQLI_ASSOC);
     if($row['dt']){
         $sql = "SELECT id, DATE(dt) as d, TIME(dt) as t, user, type, msg
               FROM messages
              WHERE dt >= '".addslashes($row['dt'])."'
           ORDER BY dt, id
-	     LIMIT 1000";
+         LIMIT 1000";
     }else{
         echo 'Could not find any logs for user '.htmlspecialchars($_REQUEST['u']);
         $sql = '';
@@ -57,7 +57,7 @@ if($_REQUEST['s']){
           ORDER BY dt, id";
 }
 
-if($sql) $res = mysql_query($sql,$dbh);
+if($sql) $res = mysqli_query($dbh,$sql);
 
 echo '<h1>IRC log of '.$conf['irc_chan'].' @ '.$conf['irc_host'].'</h1>';
 if($date){
@@ -72,7 +72,7 @@ echo '<a href="#nav" class="skip">skip to navigation</a>';
 
 // content *******************************************
 echo '<ol id="log">';
-if($sql) while($row = mysql_fetch_array($res, MYSQL_ASSOC)){
+if($sql) while($row = mysqli_fetch_array($res, MYSQLI_ASSOC)){
     echo '<li id="msg'.$row['id'].'" class="'.$row['type'].'">';
     echo '<a href="index.php?d='.$row['d'].'#msg'.$row['id'].'" class="time" title="'.$row['d'].'">';
     // give screenreaders a hint early enough which line includes a real message
@@ -106,13 +106,13 @@ $sql = "SELECT DISTINCT DATE(dt) as d, DAY(dt) as day
           FROM messages
          WHERE dt > DATE_SUB(NOW(), INTERVAL 30 DAY)
       ORDER BY dt";
-$res = mysql_query($sql,$dbh);
+$res = mysqli_query($dbh,$sql);
 
 echo '<div id="nav">';
 echo '<h2 class="a11y">Navigation</h2>';
 echo '<h3>Last 30 days</h3>';
 echo '<ul class="archive">';
-while($row = mysql_fetch_array($res, MYSQL_ASSOC)){
+while($row = mysqli_fetch_array($res, MYSQLI_ASSOC)){
     echo '<li><a href="index.php?d='.$row['d'].'" title="'.$row['d'].'">'.$row['day'].'</a></li>';
 }
 ?>
